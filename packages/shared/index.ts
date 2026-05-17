@@ -221,3 +221,8 @@ export interface GetLockersQuery {
 export interface RentLockerRequest {
   memberId: string;
 }
+
+export interface UpdateLockerRequest {
+  number?: number;
+  location?: string;
+}
