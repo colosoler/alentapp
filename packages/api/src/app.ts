@@ -43,7 +43,7 @@ import { GetSportsUseCase } from './application/GetSportsUseCase.js';
 import { GetSportByIdUseCase } from './application/GetSportByIdUseCase.js';
 import { UpdateSportUseCase } from './application/UpdateSportUseCase.js';
 import { UpdateSportEnrollmentCountUseCase } from './application/UpdateSportEnrollmentCountUseCase.js';
-
+import { DeleteSportUseCase } from './application/DeleteSportUseCase.js';
 
 import { GetLockersUseCase } from './application/GetLockersUseCase.js';
 
@@ -146,8 +146,7 @@ export function buildApp() {
         sportRepo,
         sportValidator,
     );
-
-
+    const deleteSportUseCase = new DeleteSportUseCase(sportRepo);
 
     const memberController = new MemberController(
         createMemberUseCase,
@@ -177,7 +176,7 @@ export function buildApp() {
     const createLockerUseCase = new CreateLockerUseCase(lockerRepo, lockerValidator);
     const getLockersUseCase = new GetLockersUseCase(lockerRepo)
     const lockerController = new LockerController(createLockerUseCase, getLockersUseCase);
-    const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase, updateSportUseCase, updateSportEnrollmentCountUseCase);
+    const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase, updateSportUseCase, updateSportEnrollmentCountUseCase, deleteSportUseCase);
     const paymentController = new PaymentController(
         createPaymentUseCase,
         getPaymentsUseCase,
@@ -283,6 +282,10 @@ export function buildApp() {
     server.patch(
         '/api/v1/sports/:id/enrollment-count',
         sportController.updateEnrollmentCount.bind(sportController),
+    );
+    server.delete(
+        '/api/v1/sports/:id',
+        sportController.delete.bind(sportController),
     );
 
     // rutas de locker
