@@ -29,6 +29,7 @@ import { CreatePaymentUseCase } from './application/CreatePaymentUseCase.js';
 import { GetPaymentsUseCase } from './application/GetPaymentsUseCase.js';
 import { GetPaymentByIdUseCase } from './application/GetPaymentByIdUseCase.js';
 import { UpdatePaymentUseCase } from './application/UpdatePaymentUseCase.js';
+import { CancelPaymentUseCase } from './application/CancelPaymentUseCase.js';
 import { PaymentController } from './delivery/PaymentController.js';
 
 export function buildApp() {
@@ -115,6 +116,7 @@ export function buildApp() {
     const getPaymentsUseCase = new GetPaymentsUseCase(paymentRepo);
     const getPaymentByIdUseCase = new GetPaymentByIdUseCase(paymentRepo);
     const updatePaymentUseCase = new UpdatePaymentUseCase(paymentRepo);
+    const cancelPaymentUseCase = new CancelPaymentUseCase(paymentRepo);
 
     const memberController = new MemberController(
         createMemberUseCase,
@@ -143,6 +145,7 @@ export function buildApp() {
         getPaymentsUseCase,
         getPaymentByIdUseCase,
         updatePaymentUseCase,
+        cancelPaymentUseCase,
     );
 
     server.get(
@@ -216,6 +219,10 @@ export function buildApp() {
     server.put(
         '/api/v1/payments/:id',
         paymentController.update.bind(paymentController),
+    );
+    server.patch(
+        '/api/v1/payments/:id/cancel',
+        paymentController.cancel.bind(paymentController),
     );
 
     server.get('/', async (req, rep) => {
