@@ -380,13 +380,15 @@ export function PaymentsView() {
                   </Table.Cell>
                   <Table.Cell>
                     <HStack gap="1">
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        onClick={() => openEditModal(payment)}
-                      >
-                        <LuPencil />
-                      </Button>
+                      {payment.status !== 'Canceled' && (
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => openEditModal(payment)}
+                        >
+                          <LuPencil />
+                        </Button>
+                      )}
                       {payment.status === 'Pending' && (
                         <Button
                           size="xs"
