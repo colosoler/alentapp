@@ -21,11 +21,14 @@ Permitir a los administrativos corregir datos de un pago existente, como el mont
 
 ### Criterios de Aceptación
 
-- El sistema debe permitir actualizar uno o varios campos del pago (`amount`, `month`, `year`, `dueDate`, `paymentDate`).
+- El sistema debe permitir actualizar uno o varios campos del pago (`amount`, `month`, `year`, `dueDate`, `paymentDate`, `status`).
 - El sistema debe validar que el pago exista antes de intentar actualizarlo.
 - El sistema debe validar que, si se modifica `amount`, el nuevo valor sea mayor a cero.
 - El sistema debe validar que, si se modifica `month`, esté entre 1 y 12.
-- El sistema **no debe permitir** modificar el `status` desde este endpoint (el cambio de status se gestiona en TDD-0013).
+- El sistema debe permitir cambiar el estado de "Pending" a "Paid" (marcar como pagado).
+- Al marcar como pagado, el campo `paymentDate` debe establecerse automáticamente con la fecha actual.
+- El sistema no debe permitir cambiar el estado a "Canceled" (se gestiona en TDD-0013).
+- El sistema no debe permitir cambiar el estado si el pago ya está "Canceled".
 - Si la edición es correcta, debe retornar los datos actualizados del pago.
 
 ## Diseño Técnico (RFC)
@@ -44,6 +47,7 @@ Todos los campos son opcionales ya que se trata de una actualización parcial.
     year?: number;
     dueDate?: string;     // ISO Date String (YYYY-MM-DD)
     paymentDate?: string; // ISO Date String (YYYY-MM-DD), nullable
+    status?: "Paid";      // Solo permite cambiar de "Pending" a "Paid"
 }
 ```
 
@@ -64,8 +68,8 @@ Todos los campos son opcionales ya que se trata de una actualización parcial.
 
 ### Componentes de Arquitectura Hexagonal
 
-- **Domain**: Entidad `Payment` que reutiliza las validaciones de monto positivo y mes en rango.
-- **Application**: Caso de uso `UpdatePaymentUseCase` (verifica existencia del pago, valida los campos recibidos y bloquea el cambio de `status`). Puerto: `PaymentRepository` (método `update(id, data)`).
+- **Domain**: Entidad `Payment` que reutiliza las validaciones de monto positivo y mes en rango. Permite cambio de estado "Pending" → "Paid" con validación de estado actual.
+- **Application**: Caso de uso `UpdatePaymentUseCase` (verifica existencia del pago, valida los campos recibidos y permite cambio de "Pending" a "Paid" estableciendo paymentDate automáticamente). Puerto: `PaymentRepository` (método `update(id, data)`).
 - **Infrastructure**: `PostgresPaymentRepository` (implementación de `update` usando Prisma). `PaymentController` (ruta `PUT /api/v1/payments/:id` que extrae el `id` de la URL y mapea excepciones a códigos HTTP).
 
 ## Casos de Borde y Errores
@@ -75,7 +79,8 @@ Todos los campos son opcionales ya que se trata de una actualización parcial.
 | Pago inexistente           | Mensaje: "El pago especificado no existe"                 | 404 Not Found             |
 | Monto no positivo          | Mensaje: "El monto debe ser mayor a cero"                 | 400 Bad Request           |
 | Mes fuera de rango         | Mensaje: "El mes debe estar entre 1 y 12"                 | 400 Bad Request           |
-| Intento de cambiar status  | Mensaje: "El status no puede modificarse desde este endpoint" | 400 Bad Request       |
+| Cambiar a "Canceled"       | Mensaje: "Use el endpoint de cancelación"                | 400 Bad Request           |
+| Pago ya cancelado → Paid   | Mensaje: "No se puede pagar un pago cancelado"            | 400 Bad Request           |
 | Error de conexión a DB     | Mensaje: "Error interno, reintente más tarde"             | 500 Internal Server Error |
 | Actualización exitosa      | Datos del pago actualizados                               | 200 OK                    |
 

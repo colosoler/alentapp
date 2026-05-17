@@ -165,6 +165,21 @@ export interface CreateSportRequest {
   additional_price: number;
   requires_medical_certificate: boolean;
 }
+
+export type SportListResponse = SportDTO[];
+
+export interface GetSportsQuery {
+  name?: string;
+}
+
+export interface UpdateSportRequest {
+  description?: string;
+  max_capacity?: number;
+}
+
+export interface UpdateSportEnrollmentCountRequest {
+  action: 'increment' | 'decrement';
+}
 // Locker
 // ==========================================
 

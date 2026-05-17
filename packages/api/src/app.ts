@@ -39,6 +39,8 @@ import { PostgresSportRepository } from './infrastructure/PostgresSportRepositor
 import { SportValidator } from './domain/services/SportValidator.js';
 import { CreateSportUseCase } from './application/CreateSportUseCase.js';
 import { SportController } from './delivery/SportController.js';
+import { GetSportsUseCase } from './application/GetSportsUseCase.js';
+import { GetSportByIdUseCase } from './application/GetSportByIdUseCase.js';
 
 import { GetLockersUseCase } from './application/GetLockersUseCase.js';
 
@@ -134,6 +136,8 @@ export function buildApp() {
         sportRepo,
         sportValidator,
     );
+    const getSportsUseCase = new GetSportsUseCase(sportRepo);
+    const getSportByIdUseCase = new GetSportByIdUseCase(sportRepo);
 
 
     const memberController = new MemberController(
@@ -164,7 +168,7 @@ export function buildApp() {
     const createLockerUseCase = new CreateLockerUseCase(lockerRepo, lockerValidator);
     const getLockersUseCase = new GetLockersUseCase(lockerRepo)
     const lockerController = new LockerController(createLockerUseCase, getLockersUseCase);
-  
+    const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase);
     const paymentController = new PaymentController(
         createPaymentUseCase,
         getPaymentsUseCase,
@@ -172,7 +176,6 @@ export function buildApp() {
         updatePaymentUseCase,
         cancelPaymentUseCase,
     );
-    const sportController = new SportController(createSportUseCase);
 
     server.get(
         '/api/v1/socios',
@@ -253,6 +256,15 @@ export function buildApp() {
     server.post(
         '/api/v1/sports',
         sportController.create.bind(sportController),
+    );
+    server.get(
+        '/api/v1/sports',
+        sportController.getAll.bind(sportController),
+    );
+
+    server.get(
+        '/api/v1/sports/:id',
+        sportController.getById.bind(sportController),
     );
 
     // rutas de locker

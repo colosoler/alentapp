@@ -1,10 +1,14 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { CreateSportUseCase } from '../application/CreateSportUseCase.js';
-import { CreateSportRequest } from '@alentapp/shared';
+import { GetSportsUseCase } from '../application/GetSportsUseCase.js';
+import { GetSportByIdUseCase } from '../application/GetSportByIdUseCase.js';
+import { CreateSportRequest, GetSportsQuery } from '@alentapp/shared';
 
 export class SportController {
     constructor(
         private readonly createSportUseCase: CreateSportUseCase,
+        private readonly getSportsUseCase: GetSportsUseCase,
+        private readonly getSportByIdUseCase: GetSportByIdUseCase,
     ) {}
 
     async create(
@@ -27,6 +31,38 @@ export class SportController {
                 error.message.includes('El precio adicional es obligatorio')
             ) {
                 return reply.status(400).send({ error: error.message });
+            }
+
+            return reply.status(500).send({
+                error: 'Error interno, reintente más tarde',
+            });
+        }
+    }
+
+    async getAll(
+        request: FastifyRequest<{ Querystring: GetSportsQuery }>,
+        reply: FastifyReply,
+    ) {
+        try {
+            const sports = await this.getSportsUseCase.execute(request.query);
+            return reply.status(200).send({ data: sports });
+        } catch (error: any) {
+            return reply.status(500).send({
+                error: 'Error interno, reintente más tarde',
+            });
+        }
+    }
+
+    async getById(
+        request: FastifyRequest<{ Params: { id: string } }>,
+        reply: FastifyReply,
+    ) {
+        try {
+            const sport = await this.getSportByIdUseCase.execute(request.params.id);
+            return reply.status(200).send({ data: sport });
+        } catch (error: any) {
+            if (error.message.includes('El deporte no existe')) {
+                return reply.status(404).send({ error: error.message });
             }
 
             return reply.status(500).send({
