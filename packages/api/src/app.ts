@@ -44,6 +44,7 @@ import { GetSportByIdUseCase } from './application/GetSportByIdUseCase.js';
 import { GetLockersUseCase } from './application/GetLockersUseCase.js';
 import { RentLockerUseCase } from './application/RentLockerUseCase.js';
 import { ReleaseLockerUseCase } from './application/ReleaseLockerUseCase.js';
+import { UpdateLockerUseCase } from './application/UpdateLockerUseCase.js';
 
 export function buildApp() {
     const server = Fastify({
@@ -169,7 +170,8 @@ export function buildApp() {
     const getLockersUseCase = new GetLockersUseCase(lockerRepo);
     const rentLockersUseCase = new RentLockerUseCase(lockerRepo, memberRepo);
     const releaseLockersUseCase = new ReleaseLockerUseCase(lockerRepo);
-    const lockerController = new LockerController(createLockerUseCase, getLockersUseCase, rentLockersUseCase, releaseLockersUseCase);
+    const updateLockerUseCase = new UpdateLockerUseCase(lockerRepo);
+    const lockerController = new LockerController(createLockerUseCase, getLockersUseCase, rentLockersUseCase, releaseLockersUseCase, updateLockerUseCase);
     const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase);
     const paymentController = new PaymentController(
         createPaymentUseCase,
@@ -269,6 +271,7 @@ export function buildApp() {
     server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController));
     server.patch('/api/v1/lockers/:id/rent', lockerController.rent.bind(lockerController));
     server.patch('/api/v1/lockers/:id/release', lockerController.release.bind(lockerController));
+    server.patch('/api/v1/lockers/:id', lockerController.update.bind(lockerController));
 
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' });

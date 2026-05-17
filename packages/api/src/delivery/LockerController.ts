@@ -1,17 +1,19 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { CreateLockerUseCase } from "../application/CreateLockerUseCase.js";
-import { CreateLockerRequest, GetLockersQuery, RentLockerRequest } from "../../../shared/index.js";
+import { CreateLockerRequest, GetLockersQuery, RentLockerRequest, UpdateLockerRequest } from "../../../shared/index.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../domain/services/LockerValidator.js";
 import { GetLockersUseCase } from "../application/GetLockersUseCase.js";
 import { RentLockerUseCase } from "../application/RentLockerUseCase.js";
 import { ReleaseLockerUseCase } from "../application/ReleaseLockerUseCase.js";
+import { UpdateLockerUseCase } from "../application/UpdateLockerUseCase.js";
 
 export class LockerController {
     constructor(
         private readonly createLockerUseCase: CreateLockerUseCase,
         private readonly getLockersUseCase: GetLockersUseCase,
         private readonly rentLockerUseCase: RentLockerUseCase,
-        private readonly releaseLockerUseCase: ReleaseLockerUseCase
+        private readonly releaseLockerUseCase: ReleaseLockerUseCase,
+        private readonly updateLockerUseCase: UpdateLockerUseCase
     ) {}
 
     async create(req: FastifyRequest<{Body: CreateLockerRequest}>, response: FastifyReply) {
@@ -83,4 +85,23 @@ export class LockerController {
             return response.status(500).send({ error: 'Error interno del servidor' });
         }
     }
+
+    async update(req: FastifyRequest<{ Params: { id: string }, Body: UpdateLockerRequest }>, response: FastifyReply) {
+        try {
+            const locker = await this.updateLockerUseCase.execute(req.params.id, req.body);
+            return response.status(200).send(locker);
+        } catch (error: any) {
+            if (error instanceof NotFoundError) {
+                return response.status(404).send({ error: error.message });
+            }
+            if (error instanceof ConflictError) {
+                return response.status(409).send({ error: error.message });
+            }
+            if (error instanceof BadRequestError) {
+                return response.status(400).send({ error: error.message });
+            }
+            return response.status(500).send({ error: 'Internal Server Error' });
+        }
+    }
+
 }
