@@ -23,6 +23,10 @@ import { GetLoansUseCase } from './application/GetLoansUseCase.js';
 import { DeleteLoanUseCase } from './application/DeleteLoanUseCase.js';
 import { UpdateLoanStatusUseCase } from './application/UpdateLoanStatusUseCase.js';
 import { LoanController } from './delivery/LoanController.js';
+import { PostgresLockerRepository } from './infrastructure/PostgresLockerRepository.js';
+import { LockerValidator } from './domain/services/LockerValidator.js';
+import { CreateLockerUseCase } from './application/CreateLockerUseCase.js';
+import { LockerController } from './delivery/LockerController.js';
 import { PostgresPaymentRepository } from './infrastructure/PostgresPaymentRepository.js';
 import { PaymentValidator } from './domain/services/PaymentValidator.js';
 import { CreatePaymentUseCase } from './application/CreatePaymentUseCase.js';
@@ -140,6 +144,12 @@ export function buildApp() {
         updateLoanStatusUseCase,
     );
 
+    // instancias de locker
+    const lockerRepo = new PostgresLockerRepository();
+    const lockerValidator = new LockerValidator(lockerRepo);
+    const createLockerUseCase = new CreateLockerUseCase(lockerRepo, lockerValidator);
+    const lockerController = new LockerController(createLockerUseCase);
+  
     const paymentController = new PaymentController(
         createPaymentUseCase,
         getPaymentsUseCase,
@@ -224,6 +234,9 @@ export function buildApp() {
         '/api/v1/payments/:id/cancel',
         paymentController.cancel.bind(paymentController),
     );
+
+    // rutas de locker
+    server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
 
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' });

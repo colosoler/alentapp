@@ -23,6 +23,7 @@ Permitir a los administrativos dar de baja permanentemente a un deporte del sist
 
 - El sistema debe pedir una confirmación explícita (advertencia visual) antes de proceder con el borrado.
 - El sistema debe validar que el deporte exista antes de intentar borrarlo.
+- El sistema no debe permitir eliminar un deporte si tiene cupo ocupado, es decir, si `current_enrollment_count` es mayor a 0.
 - El sistema debe realizar un borrado físico de la base de datos .
 - Si el borrado es exitoso, la tabla debe actualizarse automáticamente.
 
@@ -49,6 +50,7 @@ Al tratarse de una operacion destructiva que solo requiere conocer el identifica
 | Escenario                  | Resultado Esperado                            | Código HTTP actual        |
 | -------------------------- | --------------------------------------------- | ------------------------- |
 | Deporte inexistente          | Mensaje: "El deporte no existe"               | 404 Not Found           |
+| Deporte con cupo ocupado | Mensaje: "No se puede eliminar un deporte con inscriptos" | 409 Conflict |
 | ID invalido | Mensaje: "El id informado no es valido" | 400 Bad Request |
 | Error de conexión a DB     | Mensaje: "Error interno, reintente más tarde"     | 500 Internal Server Error |
 | Eliminación exitosa        | Respuesta vacía                               | 204 No Content            |

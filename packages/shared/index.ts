@@ -141,3 +141,23 @@ export interface UpdatePaymentRequest {
     paymentDate?: string;
     status?: "Paid";
 }
+
+// ==========================================
+// Locker
+// ==========================================
+
+export type LockerStatus = 'Available' | 'Maintenance' | 'Occupied';
+
+export interface LockerResponse {
+  id: string;
+  number: number;
+  location: string;
+  status: LockerStatus;
+  memberId: string | null;
+}
+
+export interface CreateLockerRequest {
+  number: number;
+  location: string;
+  status?: 'Available' | 'Maintenance' // no puede ser occupied en la creacion
+}

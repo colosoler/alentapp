@@ -35,6 +35,7 @@ model Member {
     created_at  DateTime        @default(now())
     disciplines Discipline[]
     loans       EquipmentLoan[]
+    lockers     Locker[]
     payments    Payment[]
 
     @@map("members") // Para que en la DB la tabla se llame 'members' en minuscula
@@ -72,6 +73,23 @@ model EquipmentLoan {
     @@map("equipment_loans")
 }
 
+enum LockerStatus {
+    Available
+    Maintenance
+    Occupied
+}
+
+model Locker {
+    id          String          @id @default(uuid()) @db.Uuid       
+    number      Int             @unique
+    location    String      
+    status      LockerStatus    @default(Available)
+    member_id   String?         @db.Uuid
+    member      Member?         @relation(fields: [member_id], references: [id])
+
+    @@map("lockers")
+}
+   
 enum PaymentStatus {
     Pending
     Paid
