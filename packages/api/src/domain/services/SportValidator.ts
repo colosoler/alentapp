@@ -32,6 +32,12 @@ export class SportValidator {
         }
     }
 
+    validateEnrollmentAction(action: unknown): void {
+        if (action !== 'increment' && action !== 'decrement') {
+            throw new Error('Accion de cupo invalida');
+        }
+    }
+
     validateAdditionalPrice(additionalPrice: number): void {
         if (typeof additionalPrice !== 'number' || Number.isNaN(additionalPrice)) {
             throw new Error('El precio adicional es obligatorio');
