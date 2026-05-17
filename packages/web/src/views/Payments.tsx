@@ -11,7 +11,7 @@ import {
   Text,
   Spinner,
 } from "@chakra-ui/react";
-import { LuPlus, LuRefreshCw, LuPencil, LuCheck } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuPencil, LuCheck, LuX } from "react-icons/lu";
 import { useEffect, useMemo, useState } from "react";
 import { membersService } from "../services/members";
 import { paymentsService } from "../services/payments";
@@ -200,6 +200,19 @@ export function PaymentsView() {
     }
   };
 
+  const handleCancel = async (paymentId: string) => {
+    if (!window.confirm('¿Está seguro de que desea cancelar este pago?')) {
+      return;
+    }
+
+    try {
+      await paymentsService.cancel(paymentId);
+      fetchPayments();
+    } catch (err: any) {
+      alert(err.message || 'Error al cancelar el pago');
+    }
+  };
+
   useEffect(() => {
     fetchMembers();
   }, []);
@@ -381,6 +394,16 @@ export function PaymentsView() {
                           onClick={() => handleMarkAsPaid(payment.id)}
                         >
                           <LuCheck /> Marcar Pagado
+                        </Button>
+                      )}
+                      {(payment.status === 'Pending' || payment.status === 'Paid') && (
+                        <Button
+                          size="xs"
+                          colorPalette="red"
+                          variant="ghost"
+                          onClick={() => handleCancel(payment.id)}
+                        >
+                          <LuX />
                         </Button>
                       )}
                     </HStack>
