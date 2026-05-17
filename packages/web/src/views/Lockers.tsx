@@ -13,9 +13,11 @@ import {
   Grid,
   Badge,
   Card,
-  VStack
+  VStack,
+  IconButton,
+  Menu
 } from '@chakra-ui/react';
-import { LuPlus, LuRefreshCw, LuFilter } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuFilter, LuPenLine, LuMenu } from "react-icons/lu";
 import { 
   DialogRoot,
   DialogContent,
@@ -78,6 +80,49 @@ export function Lockers() {
   const [releasingLockerId, setReleasingLockerId] = useState<string | null>(null);
   const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
   const [lockerToRelease, setLockerToRelease] = useState<LockerItemResponse | null>(null);
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editingLocker, setEditingLocker] = useState<LockerItemResponse | null>(null);
+  const [editNumber, setEditNumber] = useState<number | ''>('');
+  const [editLocation, setEditLocation] = useState('');
+
+  const openEditModal = (locker: LockerItemResponse) => {
+    setEditingLocker(locker);
+    setEditNumber(locker.number);
+    setEditLocation(locker.location);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLocker) return;
+    setIsUpdating(true);
+
+    try {
+      await lockerService.update(editingLocker.id, { 
+        number: Number(editNumber), 
+        location: editLocation 
+      });
+      
+      toaster.create({
+        title: 'Locker actualizado',
+        description: `Los datos del locker fueron modificados.`,
+        type: 'success',
+      });
+      
+      setIsEditDialogOpen(false);
+      fetchLockers(statusFilter); 
+    } catch (error: any) {
+      toaster.create({
+        title: 'Error de actualización',
+        description: error.message,
+        type: 'error',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const openReleaseModal = (locker: LockerItemResponse) => {
     setLockerToRelease(locker);
@@ -372,9 +417,25 @@ export function Lockers() {
                         <Card.Header>
                             <Flex justify="space-between" align="center">
                                 <Heading size="md">Locker #{locker.number}</Heading>
-                                <Badge colorPalette={getStatusColor(locker.status)} variant="solid" px={2} py={1} borderRadius="md">
-                                    {getStatusLabel(locker.status)}
-                                </Badge>
+                                <Flex align="center" gap={2}>
+                                    <Badge colorPalette={getStatusColor(locker.status)} variant="solid" px={2} py={1} borderRadius="md">
+                                        {getStatusLabel(locker.status)}
+                                    </Badge>
+                                    
+                                    <Menu.Root>
+                                      <Menu.Trigger asChild>
+                                          <IconButton aria-label="Opciones" variant="ghost" size="sm" color="gray.500">
+                                              <LuMenu />
+                                          </IconButton>
+                                      </Menu.Trigger>
+                                      <Menu.Content>
+                                          <Menu.Item value="edit" onClick={() => openEditModal(locker)}>
+                                              <LuPenLine /> Editar Locker
+                                          </Menu.Item>
+                                      </Menu.Content>
+                                  </Menu.Root>
+
+                                </Flex>
                             </Flex>
                         </Card.Header>
                         <Card.Body>
@@ -508,6 +569,47 @@ export function Lockers() {
                   </Button>
               </DialogFooter>
               <DialogCloseTrigger />
+          </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isEditDialogOpen} onOpenChange={(e) => setIsEditDialogOpen(e.open)}>
+          <DialogContent>
+            <form onSubmit={handleEditSubmit}>
+              <DialogHeader>
+                <DialogTitle>Editar Locker #{editingLocker?.number}</DialogTitle>
+              </DialogHeader>
+              <DialogBody>
+                <Stack gap="4">
+                  <Field label="Número de Locker" required>
+                    <Input 
+                      type="number" 
+                      value={editNumber} 
+                      onChange={(e) => setEditNumber(e.target.value === '' ? '' : Number(e.target.value))} 
+                      placeholder="Ej: 101"
+                      min={1}
+                      required
+                    />
+                  </Field>
+                  
+                  <Field label="Ubicación" required>
+                    <Input 
+                      placeholder="Ej: Pasillo Principal"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      required
+                    />
+                  </Field>
+                </Stack>
+              </DialogBody>
+              <DialogFooter>
+                <DialogActionTrigger asChild>
+                  <Button variant="outline">Cancelar</Button>
+                </DialogActionTrigger>
+                <Button type="submit" colorPalette="blue" loading={isUpdating}>
+                  Guardar Cambios
+                </Button>
+              </DialogFooter>
+              <DialogCloseTrigger />
+            </form>
           </DialogContent>
         </DialogRoot>
         </Box>
