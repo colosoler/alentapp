@@ -73,6 +73,18 @@ model EquipmentLoan {
     @@map("equipment_loans")
 }
 
+model Sport {
+    id                           String  @id @default(uuid()) @db.Uuid
+    name                         String  @unique
+    description                  String
+    max_capacity                 Int
+    current_enrollment_count     Int     @default(0)
+    additional_price             Float
+    requires_medical_certificate Boolean
+
+    @@map("sports")
+}
+
 enum LockerStatus {
     Available
     Maintenance

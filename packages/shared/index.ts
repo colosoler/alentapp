@@ -143,6 +143,28 @@ export interface UpdatePaymentRequest {
 }
 
 // ==========================================
+// Sport
+// ==========================================
+
+export interface SportDTO {
+  id: string; // UUID
+  name: string;
+  description: string;
+  max_capacity: number;
+  current_enrollment_count: number;
+  additional_price: number;
+  requires_medical_certificate: boolean;
+}
+
+export type SportResponse = SportDTO;
+
+export interface CreateSportRequest {
+  name: string;
+  description: string;
+  max_capacity: number;
+  additional_price: number;
+  requires_medical_certificate: boolean;
+}
 // Locker
 // ==========================================
 
@@ -160,4 +182,22 @@ export interface CreateLockerRequest {
   number: number;
   location: string;
   status?: 'Available' | 'Maintenance' // no puede ser occupied en la creacion
+}
+
+export interface LockerItemResponse {
+  id: string;
+  number: number;
+  location: string;
+  status: LockerStatus;
+  memberId: string | null;
+  member: {
+      name: string;
+      dni: string;
+  } | null;
+}
+
+export type LockerListResponse = LockerItemResponse[];
+
+export interface GetLockersQuery {
+  status?: string;
 }

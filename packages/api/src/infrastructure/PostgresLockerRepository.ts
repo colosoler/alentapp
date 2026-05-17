@@ -1,6 +1,6 @@
 import { PrismaClient } from "../generated/client/index.js";
 import { LockerRepository } from "../domain/LockerRepository.js";
-import { LockerResponse, LockerStatus } from "../../../shared/index.js";
+import { LockerItemResponse, LockerResponse, LockerStatus } from "../../../shared/index.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 if (!process.env.DATABASE_URL) {
@@ -49,6 +49,27 @@ export class PostgresLockerRepository implements LockerRepository {
             status: dbLocker.status as LockerStatus,
             memberId: dbLocker.member_id
         }
+    }
+
+    async findAll(status?: LockerStatus): Promise<LockerItemResponse[]> {
+        const lockers = await prisma.locker.findMany({
+            where: status ? { status } : undefined,
+            include: {
+                member: {
+                    select: { name: true, dni: true }
+                }
+            },
+            orderBy: { number: 'asc' }
+        });
+
+        return lockers.map(l => ({
+            id: l.id,
+            number: l.number,
+            location: l.location,
+            status: l.status as LockerStatus,
+            memberId: l.member_id,
+            member: l.member ? { name: l.member.name, dni: l.member.dni } : null
+        }));
     }
 
 }
