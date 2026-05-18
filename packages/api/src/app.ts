@@ -27,6 +27,7 @@ import { PostgresMedicalCertificateRepository } from './infrastructure/PostgresM
 import { MedicalCertificateValidator } from './domain/services/MedicalCertificateValidator.js';
 import { CreateMedicalCertificateUseCase } from './application/CreateMedicalCertificateUseCase.js';
 import { GetMedicalCertificatesUseCase } from './application/GetMedicalCertificatesUseCase.js';
+import { UpdateMedicalCertificateUseCase } from './application/UpdateMedicalCertificateUseCase.js';
 import { MedicalCertificateController } from './delivery/MedicalCertificateController.js';
 import { PostgresLockerRepository } from './infrastructure/PostgresLockerRepository.js';
 import { LockerValidator } from './domain/services/LockerValidator.js';
@@ -178,7 +179,12 @@ export function buildApp() {
     const medicalCertValidator = new MedicalCertificateValidator();
     const createMedicalCertUseCase = new CreateMedicalCertificateUseCase(medicalCertRepo, memberRepo, medicalCertValidator);
     const getMedicalCertsUseCase = new GetMedicalCertificatesUseCase(medicalCertRepo);
-    const medicalCertificateController = new MedicalCertificateController(createMedicalCertUseCase, getMedicalCertsUseCase);
+    const updateMedicalCertUseCase = new UpdateMedicalCertificateUseCase(medicalCertRepo, medicalCertValidator);
+    const medicalCertificateController = new MedicalCertificateController(
+        createMedicalCertUseCase,
+        getMedicalCertsUseCase,
+        updateMedicalCertUseCase,
+    );
     const loanController = new LoanController(
         createLoanUseCase,
         getLoansUseCase,
@@ -318,6 +324,10 @@ export function buildApp() {
     server.get(
         '/api/v1/medical-certificates',
         medicalCertificateController.getAll.bind(medicalCertificateController),
+    );
+    server.patch(
+        '/api/v1/medical-certificates/:id',
+        medicalCertificateController.update.bind(medicalCertificateController),
     );
     // rutas de locker
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
