@@ -4,6 +4,7 @@ import { GetSportsUseCase } from '../application/GetSportsUseCase.js';
 import { GetSportByIdUseCase } from '../application/GetSportByIdUseCase.js';
 import { UpdateSportUseCase } from '../application/UpdateSportUseCase.js';
 import { UpdateSportEnrollmentCountUseCase } from '../application/UpdateSportEnrollmentCountUseCase.js';
+import { DeleteSportUseCase } from '../application/DeleteSportUseCase.js';
 import { CreateSportRequest, GetSportsQuery, UpdateSportRequest, UpdateSportEnrollmentCountRequest } from '@alentapp/shared';
 
 export class SportController {
@@ -13,6 +14,7 @@ export class SportController {
         private readonly getSportByIdUseCase: GetSportByIdUseCase,
         private readonly updateSportUseCase: UpdateSportUseCase,
         private readonly updateSportEnrollmentCountUseCase: UpdateSportEnrollmentCountUseCase,
+        private readonly deleteSportUseCase: DeleteSportUseCase,
     ) { }
 
     async create(
@@ -74,7 +76,7 @@ export class SportController {
             });
         }
     }
-    
+
     async update(
         request: FastifyRequest<{ Params: { id: string }; Body: UpdateSportRequest }>,
         reply: FastifyReply,
@@ -135,6 +137,28 @@ export class SportController {
             }
 
             if (error.message.includes('No hay cupo disponible')) {
+                return reply.status(409).send({ error: error.message });
+            }
+
+            return reply.status(500).send({
+                error: 'Error interno, reintente más tarde',
+            });
+        }
+    }
+
+    async delete(
+        request: FastifyRequest<{ Params: { id: string } }>,
+        reply: FastifyReply,
+    ) {
+        try {
+            await this.deleteSportUseCase.execute(request.params.id);
+            return reply.status(204).send();
+        } catch (error: any) {
+            if (error.message.includes('El deporte no existe')) {
+                return reply.status(404).send({ error: error.message });
+            }
+
+            if (error.message.includes('No se puede eliminar un deporte con inscriptos')) {
                 return reply.status(409).send({ error: error.message });
             }
 

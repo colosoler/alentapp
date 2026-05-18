@@ -43,7 +43,7 @@ import { GetSportsUseCase } from './application/GetSportsUseCase.js';
 import { GetSportByIdUseCase } from './application/GetSportByIdUseCase.js';
 import { UpdateSportUseCase } from './application/UpdateSportUseCase.js';
 import { UpdateSportEnrollmentCountUseCase } from './application/UpdateSportEnrollmentCountUseCase.js';
-
+import { DeleteSportUseCase } from './application/DeleteSportUseCase.js';
 
 import { GetLockersUseCase } from './application/GetLockersUseCase.js';
 import { RentLockerUseCase } from './application/RentLockerUseCase.js';
@@ -149,8 +149,7 @@ export function buildApp() {
         sportRepo,
         sportValidator,
     );
-
-
+    const deleteSportUseCase = new DeleteSportUseCase(sportRepo);
 
     const memberController = new MemberController(
         createMemberUseCase,
@@ -178,7 +177,7 @@ export function buildApp() {
     const lockerRepo = new PostgresLockerRepository();
     const lockerValidator = new LockerValidator(lockerRepo);
     const createLockerUseCase = new CreateLockerUseCase(lockerRepo, lockerValidator);
-    const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase, updateSportUseCase, updateSportEnrollmentCountUseCase);
+    const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase, updateSportUseCase, updateSportEnrollmentCountUseCase, deleteSportUseCase);
     const getLockersUseCase = new GetLockersUseCase(lockerRepo);
     const rentLockersUseCase = new RentLockerUseCase(lockerRepo, memberRepo);
     const releaseLockersUseCase = new ReleaseLockerUseCase(lockerRepo);
@@ -289,6 +288,10 @@ export function buildApp() {
     server.patch(
         '/api/v1/sports/:id/enrollment-count',
         sportController.updateEnrollmentCount.bind(sportController),
+    );
+    server.delete(
+        '/api/v1/sports/:id',
+        sportController.delete.bind(sportController),
     );
 
     // rutas de locker
