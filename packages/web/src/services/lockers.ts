@@ -85,4 +85,17 @@ export const lockerService = {
             throw new Error(errorData?.error || 'Error al eliminar el locker');
         }
     },
+
+    startMaintenance: async (id: string): Promise<LockerResponse> => {
+        const response = await fetch(`${API_URL}/lockers/${id}/maintenance/start`, {
+            method: 'PATCH',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || 'Error al enviar a mantenimiento');
+        }
+
+        return response.json();
+    },
 };

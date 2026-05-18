@@ -131,4 +131,12 @@ export class PostgresLockerRepository implements LockerRepository {
             where: { id }
         });
     }
+
+    async updateStatus(id: string, status: LockerStatus): Promise<LockerResponse> {
+        const updatedLocker = await prisma.locker.update({
+            where: { id },
+            data: { status }
+        });
+        return this.mapToDTO(updatedLocker);
+    }
 }
