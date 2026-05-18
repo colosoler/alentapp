@@ -3,6 +3,7 @@ import { CreatePaymentUseCase } from '../application/CreatePaymentUseCase.js';
 import { GetPaymentsUseCase } from '../application/GetPaymentsUseCase.js';
 import { GetPaymentByIdUseCase } from '../application/GetPaymentByIdUseCase.js';
 import { UpdatePaymentUseCase } from '../application/UpdatePaymentUseCase.js';
+import { CancelPaymentUseCase } from '../application/CancelPaymentUseCase.js';
 import { CreatePaymentRequest, GetPaymentsQuery, UpdatePaymentRequest } from '@alentapp/shared';
 
 export class PaymentController {
@@ -11,6 +12,7 @@ export class PaymentController {
         private readonly getPaymentsUseCase: GetPaymentsUseCase,
         private readonly getPaymentByIdUseCase: GetPaymentByIdUseCase,
         private readonly updatePaymentUseCase: UpdatePaymentUseCase,
+        private readonly cancelPaymentUseCase: CancelPaymentUseCase,
     ) {}
 
     async getAll(
@@ -99,6 +101,28 @@ export class PaymentController {
                 error.message.includes('Solo se pueden marcar como pagados')
             ) {
                 return reply.status(400).send({ error: error.message });
+            }
+
+            return reply.status(500).send({
+                error: 'Error interno, reintente más tarde',
+            });
+        }
+    }
+
+    async cancel(
+        request: FastifyRequest<{ Params: { id: string } }>,
+        reply: FastifyReply,
+    ) {
+        try {
+            const payment = await this.cancelPaymentUseCase.execute(request.params.id);
+            return reply.status(200).send({ data: payment });
+        } catch (error: any) {
+            if (error.message === 'El pago especificado no existe') {
+                return reply.status(404).send({ error: error.message });
+            }
+
+            if (error.message === 'El pago ya se encuentra cancelado') {
+                return reply.status(409).send({ error: error.message });
             }
 
             return reply.status(500).send({
