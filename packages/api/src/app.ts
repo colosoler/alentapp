@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
+import fs from 'fs';
 import path from 'path';
 import { PostgresMemberRepository } from './infrastructure/PostgresMemberRepository.js';
 import { MemberValidator } from './domain/services/MemberValidator.js';
@@ -95,6 +96,7 @@ export function buildApp() {
     });
 
     const uploadsPath = path.join(process.cwd(), 'uploads');
+    fs.mkdirSync(uploadsPath, { recursive: true });
     server.register(fastifyStatic, {
         root: uploadsPath,
         prefix: '/uploads/',
@@ -392,9 +394,15 @@ if (process.argv[1] && process.argv[1].endsWith('app.ts')) {
     const server = buildApp();
     const port = parseInt(process.env.PORT || '3000', 10);
 
-    server.listen({ port, host: '0.0.0.0' }, () =>
-        server.log.info(`API server running on http://localhost:${port}`),
-    );
+    server
+        .listen({ port, host: '0.0.0.0' })
+        .then(() => {
+            server.log.info(`API server running on http://localhost:${port}`);
+        })
+        .catch((error) => {
+            server.log.error(error);
+            process.exit(1);
+        });
 
     ['SIGINT', 'SIGTERM'].forEach((signal) => {
         process.on(signal, async () => {
