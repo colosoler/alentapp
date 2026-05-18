@@ -6,6 +6,7 @@ import {
   Flex,
   Heading,
   HStack,
+  IconButton,
   Input,
   Spinner,
   Stack,
@@ -13,7 +14,7 @@ import {
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { LuPlus, LuRefreshCw } from "react-icons/lu";
+import { LuMinus, LuPencil, LuPlus, LuRefreshCw } from "react-icons/lu";
 import { useEffect, useMemo, useState } from "react";
 import type { CreateSportRequest, SportDTO } from "@alentapp/shared";
 import {
@@ -46,6 +47,8 @@ export function SportView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingSportId, setEditingSportId] = useState<string | null>(null);
+  const [updatingEnrollmentSportId, setUpdatingEnrollmentSportId] = useState<string | null>(null);
   const [additionalPriceInput, setAdditionalPriceInput] = useState("0");
   const [formData, setFormData] = useState<CreateSportRequest>(initialFormData);
 
@@ -75,14 +78,29 @@ export function SportView() {
   };
 
   const openCreateModal = () => {
+    setEditingSportId(null);
     setFormData(initialFormData);
     setAdditionalPriceInput("0");
     setFormError(null);
     setIsDialogOpen(true);
   };
 
+  const openEditModal = (sport: SportDTO) => {
+    setEditingSportId(sport.id);
+    setFormData({
+      name: sport.name,
+      description: sport.description,
+      max_capacity: sport.max_capacity,
+      additional_price: sport.additional_price,
+      requires_medical_certificate: sport.requires_medical_certificate,
+    });
+    setAdditionalPriceInput(String(sport.additional_price));
+    setFormError(null);
+    setIsDialogOpen(true);
+  };
+
   const validateForm = () => {
-    if (!formData.name.trim()) {
+    if (!editingSportId && !formData.name.trim()) {
       return "El nombre del deporte es obligatorio";
     }
 
@@ -94,13 +112,15 @@ export function SportView() {
       return "La capacidad maxima debe ser mayor a cero";
     }
 
-    const additionalPrice = Number(additionalPriceInput);
-    if (additionalPriceInput.trim() === "" || Number.isNaN(additionalPrice)) {
-      return "El precio adicional es obligatorio";
-    }
+    if (!editingSportId) {
+      const additionalPrice = Number(additionalPriceInput);
+      if (additionalPriceInput.trim() === "" || Number.isNaN(additionalPrice)) {
+        return "El precio adicional es obligatorio";
+      }
 
-    if (additionalPrice < 0) {
-      return "El precio adicional no puede ser negativo";
+      if (additionalPrice < 0) {
+        return "El precio adicional no puede ser negativo";
+      }
     }
 
     return null;
@@ -118,19 +138,45 @@ export function SportView() {
     setIsSubmitting(true);
     setFormError(null);
     try {
-      await sportsService.create({
-        ...formData,
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        additional_price: Number(additionalPriceInput),
-      });
+      if (editingSportId) {
+        await sportsService.update(editingSportId, {
+          description: formData.description.trim(),
+          max_capacity: formData.max_capacity,
+        });
+      } else {
+        await sportsService.create({
+          ...formData,
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          additional_price: Number(additionalPriceInput),
+        });
+      }
 
       setIsDialogOpen(false);
+      setEditingSportId(null);
       await fetchSports();
     } catch (err: any) {
-      setFormError(err.message || "Error al crear el deporte");
+      setFormError(err.message || "Error al guardar el deporte");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateEnrollmentCount = async (
+    sportId: string,
+    action: "increment" | "decrement",
+  ) => {
+    setUpdatingEnrollmentSportId(sportId);
+    setError(null);
+    try {
+      const updatedSport = await sportsService.updateEnrollmentCount(sportId, { action });
+      setSports((current) =>
+        current.map((sport) => sport.id === updatedSport.id ? updatedSport : sport)
+      );
+    } catch (err: any) {
+      setError(err.message || "Error al actualizar el cupo del deporte");
+    } finally {
+      setUpdatingEnrollmentSportId(null);
     }
   };
 
@@ -161,7 +207,7 @@ export function SportView() {
         <DialogContent>
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>Agregar Nuevo Deporte</DialogTitle>
+              <DialogTitle>{editingSportId ? "Editar Deporte" : "Agregar Nuevo Deporte"}</DialogTitle>
             </DialogHeader>
             <DialogBody>
               <Stack gap="4">
@@ -171,12 +217,13 @@ export function SportView() {
                   </Box>
                 )}
 
-                <Field label="Nombre" required>
+                <Field label="Nombre" required={!editingSportId}>
                   <Input
                     placeholder="Ej. Natacion"
                     value={formData.name}
                     onChange={(event) => setFormData({ ...formData, name: event.target.value })}
-                    required
+                    disabled={Boolean(editingSportId)}
+                    required={!editingSportId}
                   />
                 </Field>
 
@@ -201,18 +248,20 @@ export function SportView() {
                   />
                 </Field>
 
-                <Field label="Precio adicional" required>
+                <Field label="Precio adicional" required={!editingSportId}>
                   <Input
                     inputMode="decimal"
                     value={additionalPriceInput}
                     onChange={(event) => setAdditionalPriceInput(event.target.value)}
-                    required
+                    disabled={Boolean(editingSportId)}
+                    required={!editingSportId}
                   />
                 </Field>
 
                 <Field label="Certificado medico">
                   <Checkbox.Root
                     checked={formData.requires_medical_certificate}
+                    disabled={Boolean(editingSportId)}
                     onCheckedChange={(details) =>
                       setFormData({
                         ...formData,
@@ -232,7 +281,7 @@ export function SportView() {
                 <Button variant="outline">Cancelar</Button>
               </DialogActionTrigger>
               <Button type="submit" colorPalette="blue" loading={isSubmitting}>
-                Crear Deporte
+                {editingSportId ? "Guardar Cambios" : "Crear Deporte"}
               </Button>
             </DialogFooter>
             <DialogCloseTrigger />
@@ -294,39 +343,74 @@ export function SportView() {
                   <Table.ColumnHeader py="4">Cupo</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Precio adicional</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Certificado</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4" textAlign="end">Acciones</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {filteredSports.map((sport) => (
-                  <Table.Row key={sport.id} _hover={{ bg: "bg.muted/30" }}>
-                    <Table.Cell fontWeight="semibold" color="fg.emphasized">
-                      {sport.name}
-                    </Table.Cell>
-                    <Table.Cell color="fg.muted" maxW="360px">
-                      {sport.description}
-                    </Table.Cell>
-                    <Table.Cell color="fg.muted">
-                      {sport.current_enrollment_count}/{sport.max_capacity}
-                    </Table.Cell>
-                    <Table.Cell color="fg.muted">
-                      ${sport.additional_price}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Box
-                        display="inline-block"
-                        px="2"
-                        py="0.5"
-                        borderRadius="md"
-                        bg={sport.requires_medical_certificate ? "orange.50" : "green.50"}
-                        color={sport.requires_medical_certificate ? "orange.700" : "green.700"}
-                        fontSize="xs"
-                        fontWeight="bold"
-                      >
-                        {sport.requires_medical_certificate ? "Requerido" : "No requerido"}
-                      </Box>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
+                {filteredSports.map((sport) => {
+                  const isUpdatingEnrollment = updatingEnrollmentSportId === sport.id;
+
+                  return (
+                    <Table.Row key={sport.id} _hover={{ bg: "bg.muted/30" }}>
+                      <Table.Cell fontWeight="semibold" color="fg.emphasized">
+                        {sport.name}
+                      </Table.Cell>
+                      <Table.Cell color="fg.muted" maxW="360px">
+                        {sport.description}
+                      </Table.Cell>
+                      <Table.Cell color="fg.muted">
+                        {sport.current_enrollment_count}/{sport.max_capacity}
+                      </Table.Cell>
+                      <Table.Cell color="fg.muted">
+                        ${sport.additional_price}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Box
+                          display="inline-block"
+                          px="2"
+                          py="0.5"
+                          borderRadius="md"
+                          bg={sport.requires_medical_certificate ? "orange.50" : "green.50"}
+                          color={sport.requires_medical_certificate ? "orange.700" : "green.700"}
+                          fontSize="xs"
+                          fontWeight="bold"
+                        >
+                          {sport.requires_medical_certificate ? "Requerido" : "No requerido"}
+                        </Box>
+                      </Table.Cell>
+                      <Table.Cell textAlign="end">
+                        <HStack gap="2" justify="flex-end">
+                          <IconButton
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Decrementar cupo"
+                            disabled={isUpdatingEnrollment || sport.current_enrollment_count === 0}
+                            onClick={() => handleUpdateEnrollmentCount(sport.id, "decrement")}
+                          >
+                            <LuMinus />
+                          </IconButton>
+                          <IconButton
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Incrementar cupo"
+                            disabled={isUpdatingEnrollment || sport.current_enrollment_count >= sport.max_capacity}
+                            onClick={() => handleUpdateEnrollmentCount(sport.id, "increment")}
+                          >
+                            <LuPlus />
+                          </IconButton>
+                          <IconButton
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Editar deporte"
+                            onClick={() => openEditModal(sport)}
+                          >
+                            <LuPencil />
+                          </IconButton>
+                        </HStack>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
               </Table.Body>
             </Table.Root>
           )}
@@ -335,4 +419,5 @@ export function SportView() {
     </DialogRoot>
   );
 }
+
 

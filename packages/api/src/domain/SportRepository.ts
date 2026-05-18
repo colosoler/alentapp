@@ -6,4 +6,5 @@ export interface SportRepository {
     findById(id: string): Promise<SportDTO | null>;
     findAll(query?: GetSportsQuery): Promise<SportDTO[]>;
     update(id: string, data: UpdateSportRequest): Promise<SportDTO>;
+    updateEnrollmentCount(id: string, currentEnrollmentCount: number): Promise<SportDTO>;
 }
