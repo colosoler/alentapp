@@ -160,7 +160,7 @@ export interface UpdatePaymentRequest {
     year?: number;
     dueDate?: string;
     paymentDate?: string;
-    status?: "Paid";
+    status?: "Paid" | "Canceled";
 }
 
 // ==========================================
