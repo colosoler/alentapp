@@ -113,7 +113,6 @@ model MedicalCertificate {
     member_id       String   @db.Uuid
     issue_date      DateTime
     expiration_date DateTime?
-    file_url        String?
     status          MedicalCertificateStatus @default(Active)
     invalidated_at  DateTime?
     created_at      DateTime @default(now())

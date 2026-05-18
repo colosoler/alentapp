@@ -12,8 +12,6 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import Swal from 'sweetalert2';
-import 'sweetalert2/dist/sweetalert2.min.css';
 import { useEffect, useMemo, useState } from "react";
 import { LuPencil, LuPlus, LuRefreshCw, LuSearch, LuTrash2 } from "react-icons/lu";
 import { createListCollection, SelectContent, SelectItem, SelectRoot, SelectTrigger, SelectValueText } from "../components/ui/select";
@@ -100,8 +98,6 @@ export function MedicalCertificatesView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingCertificateId, setEditingCertificateId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState<CertificateFormState>(emptyFormState);
 
   const [memberFilter, setMemberFilter] = useState("");
@@ -211,30 +207,17 @@ export function MedicalCertificatesView() {
   const handleDelete = async (certificate: MedicalCertificateDTO) => {
     const member = members.find((item) => item.id === certificate.member_id);
     const memberLabel = member ? `${member.name} - ${member.dni}` : certificate.member_id;
-    const result = await Swal.fire({
-      title: `Eliminar certificado de ${memberLabel}`,
-      text: 'Si lo eliminás no se podrá recuperar. Usar sólo en caso de error de tipeo.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Eliminar definitivamente',
-      cancelButtonText: 'Cancelar',
-      reverseButtons: true,
-    });
 
-    if (!result.isConfirmed) return;
+    if (!window.confirm(`¿Está seguro de que desea eliminar el certificado de ${memberLabel}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
 
     try {
       await medicalCertificatesService.delete(certificate.id);
       await refreshAndKeepLookups();
-      await Swal.fire({ icon: 'success', title: 'Certificado eliminado', text: 'El certificado fue eliminado correctamente.' });
     } catch (err: any) {
-      await Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Error al eliminar el certificado' });
+      alert(err.message || "Error al eliminar el certificado");
     }
-  };
-
-  const handleViewFile = (certificate: MedicalCertificateDTO) => {
-    if (!certificate.file_url) return;
-    window.open(certificate.file_url, '_blank');
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -277,16 +260,7 @@ export function MedicalCertificatesView() {
           status: formData.status,
         };
 
-        if (selectedFile) {
-          const fd = new FormData();
-          fd.append('file', selectedFile, selectedFile.name);
-          fd.append('issueDate', updateData.issueDate || '');
-          if (updateData.expirationDate) fd.append('expirationDate', updateData.expirationDate);
-          if (updateData.status) fd.append('status', updateData.status);
-          await medicalCertificatesService.update(editingCertificateId, fd);
-        } else {
-          await medicalCertificatesService.update(editingCertificateId, updateData);
-        }
+        await medicalCertificatesService.update(editingCertificateId, updateData);
       } else {
         const createData: CreateMedicalCertificateRequest = {
           member_id: formData.member_id,
@@ -294,17 +268,7 @@ export function MedicalCertificatesView() {
           expiration_date: formData.expiration_date || undefined,
         };
 
-        if (selectedFile) {
-          const fd = new FormData();
-          fd.append('file', selectedFile, selectedFile.name);
-          fd.append('member_id', createData.member_id);
-          fd.append('issue_date', createData.issue_date);
-          if (createData.expiration_date) fd.append('expiration_date', createData.expiration_date);
-          await medicalCertificatesService.create(fd);
-        } else {
-          await medicalCertificatesService.create(createData);
-        }
-        await Swal.fire({ icon: 'success', title: 'Certificado creado', text: 'El certificado fue creado correctamente.' });
+        await medicalCertificatesService.create(createData);
       }
 
       setIsDialogOpen(false);
@@ -313,9 +277,7 @@ export function MedicalCertificatesView() {
       setFormError(null);
       await refreshAndKeepLookups();
     } catch (err: any) {
-      const msg = err.message || (editingCertificateId ? "Error al actualizar el certificado" : "Error al crear el certificado");
-      setFormError(msg);
-      await Swal.fire({ icon: 'error', title: 'Error', text: msg });
+      setFormError(err.message || (editingCertificateId ? "Error al actualizar el certificado" : "Error al crear el certificado"));
     } finally {
       setIsSubmitting(false);
     }
@@ -550,11 +512,6 @@ export function MedicalCertificatesView() {
                           <IconButton variant="ghost" size="sm" aria-label="Editar certificado" onClick={() => openEditModal(certificate)}>
                             <LuPencil />
                           </IconButton>
-                          {certificate.file_url && (
-                            <IconButton variant="ghost" size="sm" aria-label="Ver archivo" onClick={() => handleViewFile(certificate)}>
-                              <LuSearch />
-                            </IconButton>
-                          )}
                           <IconButton variant="ghost" size="sm" colorPalette="red" aria-label="Eliminar certificado" onClick={() => handleDelete(certificate)}>
                             <LuTrash2 />
                           </IconButton>
@@ -626,29 +583,6 @@ export function MedicalCertificatesView() {
                       setFormError(null);
                     }}
                   />
-                </Field>
-
-                <Field label="Adjuntar PNG (opcional)">
-                  <Input
-                    type="file"
-                    accept="image/png"
-                    onChange={(e) => {
-                      const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                      setSelectedFile(file);
-                      if (file) {
-                        const url = URL.createObjectURL(file);
-                        setFilePreview(url);
-                      } else {
-                        setFilePreview(null);
-                      }
-                    }}
-                  />
-                  {filePreview && (
-                    <Box mt="2">
-                      <Text fontSize="sm">Preview:</Text>
-                      <Box as="img" src={filePreview} maxW="200px" borderRadius="md" mt="1" />
-                    </Box>
-                  )}
                 </Field>
 
                 {editingCertificateId && (

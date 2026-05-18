@@ -1,8 +1,5 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import multipart from '@fastify/multipart';
-import fastifyStatic from '@fastify/static';
-import path from 'path';
 import { PostgresMemberRepository } from './infrastructure/PostgresMemberRepository.js';
 import { MemberValidator } from './domain/services/MemberValidator.js';
 import { CreateMemberUseCase } from './application/NewMemberUseCase.js';
@@ -88,18 +85,6 @@ export function buildApp() {
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true,
-    });
-
-    // multipart support for file uploads
-    server.register(multipart, {
-        limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-    });
-
-    // serve uploads folder
-    const uploadsPath = path.join(process.cwd(), 'uploads');
-    server.register(fastifyStatic, {
-        root: uploadsPath,
-        prefix: '/uploads/',
     });
 
     const memberRepo = new PostgresMemberRepository();
