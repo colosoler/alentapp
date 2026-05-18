@@ -9,6 +9,7 @@ import {
   
 } from "@chakra-ui/react";
 import { LuPlus, LuRefreshCw } from "react-icons/lu";
+import { LuTrash2 } from "react-icons/lu";
 import { useEffect, useState } from "react";
 import {
   SelectRoot,
@@ -49,6 +50,16 @@ export function MedicalCertificatesView() {
       console.error(e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, memberId: string) => {
+    try {
+      if (!window.confirm(`¿Está seguro de que desea eliminar este certificado del socio "${memberId}"? Esta acción no se puede deshacer.`)) return;
+      await medicalCertificatesService.delete(id);
+      fetch();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar el certificado');
     }
   };
 
@@ -151,6 +162,7 @@ export function MedicalCertificatesView() {
               <th>Emisión</th>
               <th>Vencimiento</th>
               <th>Estado</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -160,6 +172,11 @@ export function MedicalCertificatesView() {
                 <td>{c.issue_date}</td>
                 <td>{c.expiration_date || '-'}</td>
                 <td>{c.status}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <button aria-label="Eliminar certificado" onClick={() => handleDelete(c.id, c.member_id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                    <LuTrash2 />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
