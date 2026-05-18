@@ -26,6 +26,7 @@ import { LoanController } from './delivery/LoanController.js';
 import { PostgresMedicalCertificateRepository } from './infrastructure/PostgresMedicalCertificateRepository.js';
 import { MedicalCertificateValidator } from './domain/services/MedicalCertificateValidator.js';
 import { CreateMedicalCertificateUseCase } from './application/CreateMedicalCertificateUseCase.js';
+import { DeleteMedicalCertificateUseCase } from './application/DeleteMedicalCertificateUseCase.js';
 import { MedicalCertificateController } from './delivery/MedicalCertificateController.js';
 import { PostgresLockerRepository } from './infrastructure/PostgresLockerRepository.js';
 import { LockerValidator } from './domain/services/LockerValidator.js';
@@ -173,7 +174,8 @@ export function buildApp() {
     const medicalCertRepo = new PostgresMedicalCertificateRepository();
     const medicalCertValidator = new MedicalCertificateValidator();
     const createMedicalCertUseCase = new CreateMedicalCertificateUseCase(medicalCertRepo, memberRepo, medicalCertValidator);
-    const medicalCertificateController = new MedicalCertificateController(createMedicalCertUseCase);
+    const deleteMedicalCertUseCase = new DeleteMedicalCertificateUseCase(medicalCertRepo);
+    const medicalCertificateController = new MedicalCertificateController(createMedicalCertUseCase, deleteMedicalCertUseCase);
     const loanController = new LoanController(
         createLoanUseCase,
         getLoansUseCase,
@@ -301,6 +303,7 @@ export function buildApp() {
     server.get('/api/v1/equipment-loan', loanController.getAll.bind(loanController));
     server.patch('/api/v1/equipment-loan/:id/status', loanController.updateStatus.bind(loanController));
     server.post('/api/v1/medical-certificates', medicalCertificateController.create.bind(medicalCertificateController));
+    server.delete('/api/v1/medical-certificates/:id', medicalCertificateController.delete.bind(medicalCertificateController));
     // rutas de locker
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
     server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController));
