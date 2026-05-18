@@ -16,6 +16,7 @@ type DBMedicalCertificate = {
     member_id: string;
     issue_date: Date;
     expiration_date: Date | null;
+    file_url?: string | null;
     status: string;
     invalidated_at: Date | null;
     created_at: Date;
@@ -29,6 +30,7 @@ export class PostgresMedicalCertificateRepository implements MedicalCertificateR
                 member_id: data.member_id,
                 issue_date: new Date(data.issue_date),
                 expiration_date: data.expiration_date ? new Date(data.expiration_date) : undefined,
+                file_url: (data as any).file_url ?? undefined,
                 status: 'Active',
             },
         });
@@ -85,6 +87,10 @@ export class PostgresMedicalCertificateRepository implements MedicalCertificateR
             updateData.status = data.status;
         }
 
+        if ((data as any).file_url !== undefined) {
+            updateData.file_url = (data as any).file_url;
+        }
+
         const cert = await prisma.medicalCertificate.update({
             where: { id },
             data: updateData,
@@ -100,6 +106,11 @@ export class PostgresMedicalCertificateRepository implements MedicalCertificateR
     }
 
     async delete(id: string): Promise<void> {
+        const cert = await prisma.medicalCertificate.findUnique({ where: { id } });
+        if (cert && (cert as any).file_url) {
+            const { deleteMedicalCertificateFileByUrl } = await import('./FileStorage.js');
+            await deleteMedicalCertificateFileByUrl((cert as any).file_url);
+        }
         await prisma.medicalCertificate.delete({ where: { id } });
     }
 
@@ -109,6 +120,7 @@ export class PostgresMedicalCertificateRepository implements MedicalCertificateR
             member_id: cert.member_id,
             issue_date: cert.issue_date.toISOString(),
             expiration_date: cert.expiration_date ? cert.expiration_date.toISOString() : undefined,
+            file_url: (cert as any).file_url ?? undefined,
             status: cert.status as MedicalCertificateStatus,
             created_at: cert.created_at.toISOString(),
             updated_at: cert.updated_at.toISOString(),
