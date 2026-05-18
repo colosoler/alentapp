@@ -226,7 +226,9 @@ export function MedicalCertificatesView() {
 
   const handleViewFile = (certificate: MedicalCertificateDTO) => {
     if (!certificate.file_url) return;
-    window.open(certificate.file_url, '_blank');
+    const baseApi = (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+    const url = certificate.file_url.startsWith('http') ? certificate.file_url : `${baseApi}${certificate.file_url}`;
+    window.open(url, '_blank');
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -617,12 +619,12 @@ export function MedicalCertificatesView() {
                   />
                 </Field>
 
-                <Field label="Adjuntar PNG (opcional)">
+                <Field label="Adjuntar PDF (opcional)">
                   <input
                     ref={fileInputRef}
                     style={{ display: 'none' }}
                     type="file"
-                    accept="image/png"
+                    accept="application/pdf"
                     onChange={(e) => {
                       setFileError(null);
                       const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
@@ -632,10 +634,10 @@ export function MedicalCertificatesView() {
                         return;
                       }
 
-                      const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+                      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
                       const maxBytes = 5 * 1024 * 1024;
-                      if (!isPng) {
-                        setFileError('El archivo debe ser en formato PNG');
+                      if (!isPdf) {
+                        setFileError('El archivo debe ser en formato PDF');
                         setSelectedFile(null);
                         setFilePreview(null);
                         return;
@@ -655,11 +657,8 @@ export function MedicalCertificatesView() {
                   />
 
                   <Flex gap="2" align="center">
-                    <Button
-                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                      size="sm"
-                    >
-                      Seleccionar archivo PNG
+                    <Button onClick={() => fileInputRef.current && fileInputRef.current.click()} size="sm">
+                      Seleccionar archivo PDF
                     </Button>
                     {selectedFile ? (
                       <HStack gap="2">
@@ -680,7 +679,9 @@ export function MedicalCertificatesView() {
                   {filePreview && (
                     <Box mt="2">
                       <Text fontSize="sm">Preview:</Text>
-                      <Box as="img" src={filePreview} maxW="200px" borderRadius="md" mt="1" />
+                      <Box mt="1">
+                        <iframe src={filePreview} width="200" height="260" title="PDF preview" />
+                      </Box>
                     </Box>
                   )}
                 </Field>
