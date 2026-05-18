@@ -17,7 +17,7 @@ import {
   IconButton,
   Menu
 } from '@chakra-ui/react';
-import { LuPlus, LuRefreshCw, LuFilter, LuPenLine, LuMenu } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuFilter, LuPenLine, LuTrash2, LuMenu } from "react-icons/lu";
 import { 
   DialogRoot,
   DialogContent,
@@ -86,6 +86,41 @@ export function Lockers() {
   const [editingLocker, setEditingLocker] = useState<LockerItemResponse | null>(null);
   const [editNumber, setEditNumber] = useState<number | ''>('');
   const [editLocation, setEditLocation] = useState('');
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [lockerToDelete, setLockerToDelete] = useState<LockerItemResponse | null>(null);
+
+  const openDeleteModal = (locker: LockerItemResponse) => {
+    setLockerToDelete(locker);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!lockerToDelete) return;
+    setIsDeleting(true);
+
+    try {
+      await lockerService.delete(lockerToDelete.id);
+      
+      toaster.create({
+        title: 'Locker eliminado',
+        description: `El locker #${lockerToDelete.number} ha sido borrado del sistema.`,
+        type: 'success',
+      });
+      
+      setIsDeleteDialogOpen(false);
+      fetchLockers(statusFilter); 
+    } catch (error: any) {
+      toaster.create({
+        title: 'No se pudo eliminar',
+        description: error.message,
+        type: 'error',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const openEditModal = (locker: LockerItemResponse) => {
     setEditingLocker(locker);
@@ -432,6 +467,14 @@ export function Lockers() {
                                           <Menu.Item value="edit" onClick={() => openEditModal(locker)}>
                                               <LuPenLine /> Editar Locker
                                           </Menu.Item>
+                                          <Menu.Item 
+                                              value="delete" 
+                                              color="red.500" 
+                                              onClick={() => openDeleteModal(locker)}
+                                              disabled={locker.status === 'Occupied'}
+                                          >
+                                              <LuTrash2 /> Eliminar Locker
+                                          </Menu.Item>
                                       </Menu.Content>
                                   </Menu.Root>
 
@@ -610,6 +653,34 @@ export function Lockers() {
               </DialogFooter>
               <DialogCloseTrigger />
             </form>
+          </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isDeleteDialogOpen} onOpenChange={(e) => setIsDeleteDialogOpen(e.open)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Eliminar Locker #{lockerToDelete?.number}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <Text>
+                ¿Estás seguro que deseas eliminar permanentemente el casillero <strong>#{lockerToDelete?.number}</strong>?
+              </Text>
+              <Text fontSize="sm" color="red.500" mt={2} fontWeight="medium">
+                Esta acción borrará el registro físico de la base de datos y no se puede deshacer.
+              </Text>
+            </DialogBody>
+            <DialogFooter>
+              <DialogActionTrigger asChild>
+                <Button variant="outline" disabled={isDeleting}>Cancelar</Button>
+              </DialogActionTrigger>
+              <Button 
+                colorPalette="red" 
+                loading={isDeleting}
+                onClick={handleDeleteConfirm}
+              >
+                Eliminar Definitivamente
+              </Button>
+            </DialogFooter>
+            <DialogCloseTrigger />
           </DialogContent>
         </DialogRoot>
         </Box>
