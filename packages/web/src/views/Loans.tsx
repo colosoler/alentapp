@@ -11,7 +11,7 @@ import {
   Center,
   Input
 } from "@chakra-ui/react";
-import { LuPlus, LuRefreshCw, LuFilter, LuTrash2, LuCheck, LuSlidersHorizontal } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuTrash2, LuCheck, LuSlidersHorizontal } from "react-icons/lu";
 import { useEffect, useState, useMemo } from "react"; // Añadido useMemo
 import { loansService } from "../services/loans";
 import type { LoanWithMemberDTO } from "@alentapp/shared";
@@ -97,7 +97,7 @@ export function LoansView() {
     try {
       const data = await membersService.getAll();
       // Actualizado: usamos 'Cadet' para filtrar (según tus nuevas categorías)
-      setMembers(data.filter(m => m.category !== 'Cadet'));
+      setMembers(data.filter(m => m.category !== 'Cadete'));
     } catch (err: any) {
       console.error("Error loading members", err);
     }
