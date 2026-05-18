@@ -51,6 +51,7 @@ import { ReleaseLockerUseCase } from './application/ReleaseLockerUseCase.js';
 import { UpdateLockerUseCase } from './application/UpdateLockerUseCase.js';
 import { DeleteLockerUseCase } from './application/DeleteLockerUseCase.js';
 import { StartLockerMaintenanceUseCase } from './application/StartLockerMaintenanceUseCase.js';
+import { EndLockerMaintenanceUseCase } from './application/EndLockerMaintenanceUseCase.js';
 
 export function buildApp() {
     const server = Fastify({
@@ -186,7 +187,9 @@ export function buildApp() {
     const updateLockerUseCase = new UpdateLockerUseCase(lockerRepo);
     const deleteLockerUseCase = new DeleteLockerUseCase(lockerRepo);
     const startLockerMaintenanceUseCase = new StartLockerMaintenanceUseCase(lockerRepo);
-    const lockerController = new LockerController(createLockerUseCase, getLockersUseCase, rentLockersUseCase, releaseLockersUseCase, updateLockerUseCase, deleteLockerUseCase, startLockerMaintenanceUseCase);
+    const endLockerMaintenanceUseCase = new EndLockerMaintenanceUseCase(lockerRepo);
+    const lockerController = new LockerController(createLockerUseCase, getLockersUseCase, rentLockersUseCase, releaseLockersUseCase, updateLockerUseCase, deleteLockerUseCase, startLockerMaintenanceUseCase, endLockerMaintenanceUseCase);
+    
     const paymentController = new PaymentController(
         createPaymentUseCase,
         getPaymentsUseCase,
@@ -306,6 +309,7 @@ export function buildApp() {
     server.patch('/api/v1/lockers/:id', lockerController.update.bind(lockerController));
     server.delete('/api/v1/lockers/:id', lockerController.delete.bind(lockerController));
     server.patch('/api/v1/lockers/:id/maintenance/start', lockerController.startMaintenance.bind(lockerController));
+    server.patch('/api/v1/lockers/:id/maintenance/end', lockerController.endMaintenance.bind(lockerController));
 
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' });

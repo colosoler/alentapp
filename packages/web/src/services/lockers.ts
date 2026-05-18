@@ -98,4 +98,17 @@ export const lockerService = {
 
         return response.json();
     },
+
+    endMaintenance: async (id: string): Promise<LockerResponse> => {
+        const response = await fetch(`${API_URL}/lockers/${id}/maintenance/end`, {
+            method: 'PATCH',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || 'Error al finalizar el mantenimiento');
+        }
+
+        return response.json();
+    },
 };

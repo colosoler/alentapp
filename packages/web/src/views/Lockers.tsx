@@ -17,7 +17,7 @@ import {
   IconButton,
   Menu
 } from '@chakra-ui/react';
-import { LuPlus, LuRefreshCw, LuFilter, LuPenLine, LuTrash2, LuMenu, LuWrench } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuFilter, LuPenLine, LuTrash2, LuMenu, LuWrench, LuCheck } from "react-icons/lu";
 import { 
   DialogRoot,
   DialogContent,
@@ -94,6 +94,38 @@ export function Lockers() {
   const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
   const [lockerToMaintenance, setLockerToMaintenance] = useState<LockerItemResponse | null>(null);
   const [isSettingMaintenance, setIsSettingMaintenance] = useState(false);
+
+  const [isEndMaintenanceDialogOpen, setIsEndMaintenanceDialogOpen] = useState(false);
+  const [lockerToEndMaintenance, setLockerToEndMaintenance] = useState<LockerItemResponse | null>(null);
+  const [isEndingMaintenance, setIsEndingMaintenance] = useState(false);
+
+  const openEndMaintenanceModal = (locker: LockerItemResponse) => {
+    setLockerToEndMaintenance(locker);
+    setIsEndMaintenanceDialogOpen(true);
+};
+
+const confirmEndMaintenance = async () => {
+    if (!lockerToEndMaintenance) return;
+    setIsEndingMaintenance(true);
+    try {
+        await lockerService.endMaintenance(lockerToEndMaintenance.id);
+        toaster.create({
+            title: 'Mantenimiento Finalizado',
+            description: `El locker #${lockerToEndMaintenance.number} ya está disponible de nuevo.`,
+            type: 'success',
+        });
+        setIsEndMaintenanceDialogOpen(false);
+        fetchLockers(statusFilter);
+    } catch (error: any) {
+        toaster.create({
+            title: 'Error',
+            description: error.message,
+            type: 'error',
+        });
+    } finally {
+        setIsEndingMaintenance(false);
+    }
+};
 
   const openMaintenanceModal = (locker: LockerItemResponse) => {
     setLockerToMaintenance(locker);
@@ -506,6 +538,14 @@ export function Lockers() {
                                         >
                                             <LuWrench /> Enviar a Mantenimiento
                                         </Menu.Item>
+                                        <Menu.Item 
+                                            value="end-maintenance" 
+                                            color="green.500"
+                                            onClick={() => openEndMaintenanceModal(locker)}
+                                            disabled={locker.status !== 'Maintenance'}
+                                        >
+                                            <LuCheck /> Finalizar Mantenimiento
+                                        </Menu.Item>
                                           <Menu.Item 
                                               value="delete" 
                                               color="red.500" 
@@ -745,6 +785,34 @@ export function Lockers() {
                         onClick={confirmMaintenance}
                     >
                         Confirmar
+                    </Button>
+                </DialogFooter>
+                <DialogCloseTrigger />
+            </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isEndMaintenanceDialogOpen} onOpenChange={(e) => setIsEndMaintenanceDialogOpen(e.open)}>
+          <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Finalizar Mantenimiento</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <Text>
+                        ¿Deseas marcar el Locker <strong>#{lockerToEndMaintenance?.number}</strong> como reparado/limpio?
+                    </Text>
+                    <Text fontSize="sm" color="fg.muted" mt={2}>
+                        Volverá a estar "Disponible" para que pueda ser alquilado por los socios.
+                    </Text>
+                </DialogBody>
+                <DialogFooter>
+                    <DialogActionTrigger asChild>
+                        <Button variant="outline">Cancelar</Button>
+                    </DialogActionTrigger>
+                    <Button 
+                        colorPalette="green" 
+                        loading={isEndingMaintenance}
+                        onClick={confirmEndMaintenance}
+                    >
+                        Confirmar Disponibilidad
                     </Button>
                 </DialogFooter>
                 <DialogCloseTrigger />
