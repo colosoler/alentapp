@@ -125,4 +125,10 @@ export class PostgresLockerRepository implements LockerRepository {
         });
         return this.mapToDTO(updatedLocker);
     }
+
+    async delete(id: string): Promise<void> {
+        await prisma.locker.delete({
+            where: { id }
+        });
+    }
 }
