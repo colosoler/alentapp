@@ -1,4 +1,4 @@
-import type { CreateLockerRequest, LockerListResponse, LockerResponse } from "@alentapp/shared";
+import type { CreateLockerRequest, LockerListResponse, LockerResponse, RentLockerRequest } from "@alentapp/shared";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -27,6 +27,21 @@ export const lockerService = {
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             throw new Error(errorData?.error || 'Error al obtener los lockers');
+        }
+
+        return response.json();
+    },
+
+    rent: async (id: string, data: RentLockerRequest): Promise<LockerResponse> => {
+        const response = await fetch(`${API_URL}/lockers/${id}/rent`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || 'Error al alquilar el locker');
         }
 
         return response.json();

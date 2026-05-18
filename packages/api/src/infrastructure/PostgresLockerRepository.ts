@@ -72,4 +72,30 @@ export class PostgresLockerRepository implements LockerRepository {
         }));
     }
 
+    async findById(id: string): Promise<LockerResponse | null> {
+        const locker = await prisma.locker.findUnique({ where: { id } });
+        return locker ? this.mapToDTO(locker) : null;
+    }
+
+    async updateRent(id: string, memberId: string): Promise<LockerResponse> {
+        try {
+            const updatedLocker = await prisma.locker.update({
+                where: { 
+                    id: id,
+                    status: 'Available'
+                },
+                data: {
+                    status: 'Occupied',
+                    member_id: memberId
+                }
+            });
+            return this.mapToDTO(updatedLocker);
+        } catch (error: any) {
+            // P2025 es el código de Prisma cuando no encuentra el registro para actualizar
+            if (error.code === 'P2025') {
+                throw new Error('CONCURRENCY_ERROR');
+            }
+            throw error;
+        }
+    }
 }
