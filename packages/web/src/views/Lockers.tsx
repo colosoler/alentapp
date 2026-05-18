@@ -13,9 +13,11 @@ import {
   Grid,
   Badge,
   Card,
-  VStack
+  VStack,
+  IconButton,
+  Menu
 } from '@chakra-ui/react';
-import { LuPlus, LuRefreshCw, LuFilter } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuFilter, LuPenLine, LuTrash2, LuMenu, LuWrench, LuCheck } from "react-icons/lu";
 import { 
   DialogRoot,
   DialogContent,
@@ -78,6 +80,148 @@ export function Lockers() {
   const [releasingLockerId, setReleasingLockerId] = useState<string | null>(null);
   const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
   const [lockerToRelease, setLockerToRelease] = useState<LockerItemResponse | null>(null);
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editingLocker, setEditingLocker] = useState<LockerItemResponse | null>(null);
+  const [editNumber, setEditNumber] = useState<number | ''>('');
+  const [editLocation, setEditLocation] = useState('');
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [lockerToDelete, setLockerToDelete] = useState<LockerItemResponse | null>(null);
+
+  const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
+  const [lockerToMaintenance, setLockerToMaintenance] = useState<LockerItemResponse | null>(null);
+  const [isSettingMaintenance, setIsSettingMaintenance] = useState(false);
+
+  const [isEndMaintenanceDialogOpen, setIsEndMaintenanceDialogOpen] = useState(false);
+  const [lockerToEndMaintenance, setLockerToEndMaintenance] = useState<LockerItemResponse | null>(null);
+  const [isEndingMaintenance, setIsEndingMaintenance] = useState(false);
+
+  const openEndMaintenanceModal = (locker: LockerItemResponse) => {
+    setLockerToEndMaintenance(locker);
+    setIsEndMaintenanceDialogOpen(true);
+};
+
+const confirmEndMaintenance = async () => {
+    if (!lockerToEndMaintenance) return;
+    setIsEndingMaintenance(true);
+    try {
+        await lockerService.endMaintenance(lockerToEndMaintenance.id);
+        toaster.create({
+            title: 'Mantenimiento Finalizado',
+            description: `El locker #${lockerToEndMaintenance.number} ya está disponible de nuevo.`,
+            type: 'success',
+        });
+        setIsEndMaintenanceDialogOpen(false);
+        fetchLockers(statusFilter);
+    } catch (error: any) {
+        toaster.create({
+            title: 'Error',
+            description: error.message,
+            type: 'error',
+        });
+    } finally {
+        setIsEndingMaintenance(false);
+    }
+};
+
+  const openMaintenanceModal = (locker: LockerItemResponse) => {
+    setLockerToMaintenance(locker);
+    setIsMaintenanceDialogOpen(true);
+  };
+
+  const confirmMaintenance = async () => {
+    if (!lockerToMaintenance) return;
+    setIsSettingMaintenance(true);
+    try {
+        await lockerService.startMaintenance(lockerToMaintenance.id);
+        toaster.create({
+            title: 'Locker en Revisión',
+            description: `El locker #${lockerToMaintenance.number} ha sido enviado a mantenimiento.`,
+            type: 'success',
+        });
+        setIsMaintenanceDialogOpen(false);
+        fetchLockers(statusFilter);
+    } catch (error: any) {
+        toaster.create({
+            title: 'Error de operación',
+            description: error.message,
+            type: 'error',
+        });
+    } finally {
+        setIsSettingMaintenance(false);
+    }
+  };
+
+  const openDeleteModal = (locker: LockerItemResponse) => {
+    setLockerToDelete(locker);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!lockerToDelete) return;
+    setIsDeleting(true);
+
+    try {
+      await lockerService.delete(lockerToDelete.id);
+      
+      toaster.create({
+        title: 'Locker eliminado',
+        description: `El locker #${lockerToDelete.number} ha sido borrado del sistema.`,
+        type: 'success',
+      });
+      
+      setIsDeleteDialogOpen(false);
+      fetchLockers(statusFilter); 
+    } catch (error: any) {
+      toaster.create({
+        title: 'No se pudo eliminar',
+        description: error.message,
+        type: 'error',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openEditModal = (locker: LockerItemResponse) => {
+    setEditingLocker(locker);
+    setEditNumber(locker.number);
+    setEditLocation(locker.location);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLocker) return;
+    setIsUpdating(true);
+
+    try {
+      await lockerService.update(editingLocker.id, { 
+        number: Number(editNumber), 
+        location: editLocation 
+      });
+      
+      toaster.create({
+        title: 'Locker actualizado',
+        description: `Los datos del locker fueron modificados.`,
+        type: 'success',
+      });
+      
+      setIsEditDialogOpen(false);
+      fetchLockers(statusFilter); 
+    } catch (error: any) {
+      toaster.create({
+        title: 'Error de actualización',
+        description: error.message,
+        type: 'error',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const openReleaseModal = (locker: LockerItemResponse) => {
     setLockerToRelease(locker);
@@ -372,9 +516,48 @@ export function Lockers() {
                         <Card.Header>
                             <Flex justify="space-between" align="center">
                                 <Heading size="md">Locker #{locker.number}</Heading>
-                                <Badge colorPalette={getStatusColor(locker.status)} variant="solid" px={2} py={1} borderRadius="md">
-                                    {getStatusLabel(locker.status)}
-                                </Badge>
+                                <Flex align="center" gap={2}>
+                                    <Badge colorPalette={getStatusColor(locker.status)} variant="solid" px={2} py={1} borderRadius="md">
+                                        {getStatusLabel(locker.status)}
+                                    </Badge>
+                                    
+                                    <Menu.Root>
+                                      <Menu.Trigger asChild>
+                                          <IconButton aria-label="Opciones" variant="ghost" size="sm" color="gray.500">
+                                              <LuMenu />
+                                          </IconButton>
+                                      </Menu.Trigger>
+                                      <Menu.Content>
+                                          <Menu.Item value="edit" onClick={() => openEditModal(locker)}>
+                                              <LuPenLine /> Editar Locker
+                                          </Menu.Item>
+                                          <Menu.Item 
+                                            value="maintenance" 
+                                            onClick={() => openMaintenanceModal(locker)}
+                                            disabled={locker.status !== 'Available'}
+                                        >
+                                            <LuWrench /> Enviar a Mantenimiento
+                                        </Menu.Item>
+                                        <Menu.Item 
+                                            value="end-maintenance" 
+                                            color="green.500"
+                                            onClick={() => openEndMaintenanceModal(locker)}
+                                            disabled={locker.status !== 'Maintenance'}
+                                        >
+                                            <LuCheck /> Finalizar Mantenimiento
+                                        </Menu.Item>
+                                          <Menu.Item 
+                                              value="delete" 
+                                              color="red.500" 
+                                              onClick={() => openDeleteModal(locker)}
+                                              disabled={locker.status === 'Occupied'}
+                                          >
+                                              <LuTrash2 /> Eliminar Locker
+                                          </Menu.Item>
+                                      </Menu.Content>
+                                  </Menu.Root>
+
+                                </Flex>
                             </Flex>
                         </Card.Header>
                         <Card.Body>
@@ -509,6 +692,131 @@ export function Lockers() {
               </DialogFooter>
               <DialogCloseTrigger />
           </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isEditDialogOpen} onOpenChange={(e) => setIsEditDialogOpen(e.open)}>
+          <DialogContent>
+            <form onSubmit={handleEditSubmit}>
+              <DialogHeader>
+                <DialogTitle>Editar Locker #{editingLocker?.number}</DialogTitle>
+              </DialogHeader>
+              <DialogBody>
+                <Stack gap="4">
+                  <Field label="Número de Locker" required>
+                    <Input 
+                      type="number" 
+                      value={editNumber} 
+                      onChange={(e) => setEditNumber(e.target.value === '' ? '' : Number(e.target.value))} 
+                      placeholder="Ej: 101"
+                      min={1}
+                      required
+                    />
+                  </Field>
+                  
+                  <Field label="Ubicación" required>
+                    <Input 
+                      placeholder="Ej: Pasillo Principal"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      required
+                    />
+                  </Field>
+                </Stack>
+              </DialogBody>
+              <DialogFooter>
+                <DialogActionTrigger asChild>
+                  <Button variant="outline">Cancelar</Button>
+                </DialogActionTrigger>
+                <Button type="submit" colorPalette="blue" loading={isUpdating}>
+                  Guardar Cambios
+                </Button>
+              </DialogFooter>
+              <DialogCloseTrigger />
+            </form>
+          </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isDeleteDialogOpen} onOpenChange={(e) => setIsDeleteDialogOpen(e.open)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Eliminar Locker #{lockerToDelete?.number}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <Text>
+                ¿Estás seguro que deseas eliminar permanentemente el casillero <strong>#{lockerToDelete?.number}</strong>?
+              </Text>
+              <Text fontSize="sm" color="red.500" mt={2} fontWeight="medium">
+                Esta acción borrará el registro físico de la base de datos y no se puede deshacer.
+              </Text>
+            </DialogBody>
+            <DialogFooter>
+              <DialogActionTrigger asChild>
+                <Button variant="outline" disabled={isDeleting}>Cancelar</Button>
+              </DialogActionTrigger>
+              <Button 
+                colorPalette="red" 
+                loading={isDeleting}
+                onClick={handleDeleteConfirm}
+              >
+                Eliminar Definitivamente
+              </Button>
+            </DialogFooter>
+            <DialogCloseTrigger />
+          </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isMaintenanceDialogOpen} onOpenChange={(e) => setIsMaintenanceDialogOpen(e.open)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Enviar a Mantenimiento</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <Text>
+                        ¿Estás seguro que deseas enviar el Locker <strong>#{lockerToMaintenance?.number}</strong> a mantenimiento?
+                    </Text>
+                    <Text fontSize="sm" color="fg.muted" mt={2}>
+                        Esta acción bloqueará temporalmente su alquiler hasta que vuelva a estar disponible.
+                    </Text>
+                </DialogBody>
+                <DialogFooter>
+                    <DialogActionTrigger asChild>
+                        <Button variant="outline">Cancelar</Button>
+                    </DialogActionTrigger>
+                    <Button 
+                        colorPalette="orange" 
+                        loading={isSettingMaintenance}
+                        onClick={confirmMaintenance}
+                    >
+                        Confirmar
+                    </Button>
+                </DialogFooter>
+                <DialogCloseTrigger />
+            </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isEndMaintenanceDialogOpen} onOpenChange={(e) => setIsEndMaintenanceDialogOpen(e.open)}>
+          <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Finalizar Mantenimiento</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <Text>
+                        ¿Deseas marcar el Locker <strong>#{lockerToEndMaintenance?.number}</strong> como reparado/limpio?
+                    </Text>
+                    <Text fontSize="sm" color="fg.muted" mt={2}>
+                        Volverá a estar "Disponible" para que pueda ser alquilado por los socios.
+                    </Text>
+                </DialogBody>
+                <DialogFooter>
+                    <DialogActionTrigger asChild>
+                        <Button variant="outline">Cancelar</Button>
+                    </DialogActionTrigger>
+                    <Button 
+                        colorPalette="green" 
+                        loading={isEndingMaintenance}
+                        onClick={confirmEndMaintenance}
+                    >
+                        Confirmar Disponibilidad
+                    </Button>
+                </DialogFooter>
+                <DialogCloseTrigger />
+            </DialogContent>
         </DialogRoot>
         </Box>
 
