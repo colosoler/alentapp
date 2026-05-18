@@ -123,7 +123,19 @@ export interface CreateMedicalCertificateRequest {
   issue_date: string; // ISO Date String
   expiration_date?: string; // ISO Date String
 }
-// ==========================================
+
+export interface UpdateMedicalCertificateRequest {
+  issueDate?: string; // ISO Date String
+  expirationDate?: string; // ISO Date String
+  status?: MedicalCertificateStatus;
+}
+
+export interface MemberMedicalCertificateStatusResponse {
+  memberId: string;
+  hasActiveCertificate: boolean;
+  activeCertificate?: MedicalCertificateDTO;
+}
+
 // Payment
 // ==========================================
 export type PaymentStatus = 'Pending' | 'Paid' | 'Canceled';
@@ -160,7 +172,7 @@ export interface UpdatePaymentRequest {
     year?: number;
     dueDate?: string;
     paymentDate?: string;
-    status?: "Paid" | "Canceled";
+    status?: "Paid";
 }
 
 // ==========================================
@@ -243,7 +255,3 @@ export interface RentLockerRequest {
   memberId: string;
 }
 
-export interface UpdateLockerRequest {
-  number?: number;
-  location?: string;
-}
