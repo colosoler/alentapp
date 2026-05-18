@@ -2,6 +2,7 @@ import { MedicalCertificateDTO, CreateMedicalCertificateRequest } from '@alentap
 
 export interface MedicalCertificateRepository {
     create(data: CreateMedicalCertificateRequest): Promise<MedicalCertificateDTO>;
+    findAll(): Promise<MedicalCertificateDTO[]>;
     invalidateActiveByMember(memberId: string): Promise<void>;
     findByMemberId(memberId: string): Promise<MedicalCertificateDTO[]>;
 }

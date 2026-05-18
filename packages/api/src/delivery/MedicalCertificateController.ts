@@ -1,14 +1,27 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { CreateMedicalCertificateUseCase } from '../application/CreateMedicalCertificateUseCase.js';
+import { GetMedicalCertificatesUseCase } from '../application/GetMedicalCertificatesUseCase.js';
 import { CreateMedicalCertificateRequest } from '@alentapp/shared';
 
 export class MedicalCertificateController {
-    constructor(private readonly createUseCase: CreateMedicalCertificateUseCase) {}
+    constructor(
+        private readonly createUseCase: CreateMedicalCertificateUseCase,
+        private readonly getUseCase: GetMedicalCertificatesUseCase,
+    ) {}
 
     async create(request: FastifyRequest<{ Body: CreateMedicalCertificateRequest }>, reply: FastifyReply) {
         try {
             const cert = await this.createUseCase.execute(request.body);
             return reply.status(201).send({ data: cert });
+        } catch (error: any) {
+            return this.handleError(error, reply);
+        }
+    }
+
+    async getAll(_request: FastifyRequest, reply: FastifyReply) {
+        try {
+            const certs = await this.getUseCase.execute();
+            return reply.status(200).send({ data: certs });
         } catch (error: any) {
             return this.handleError(error, reply);
         }

@@ -43,13 +43,21 @@ export class PostgresMedicalCertificateRepository implements MedicalCertificateR
         });
     }
 
+    async findAll(): Promise<MedicalCertificateDTO[]> {
+        const certs = await prisma.medicalCertificate.findMany({
+            orderBy: { issue_date: 'desc' },
+        });
+
+        return certs.map((c) => this.mapToDTO(c as DBMedicalCertificate));
+    }
+
     async findByMemberId(memberId: string): Promise<MedicalCertificateDTO[]> {
         const certs = await prisma.medicalCertificate.findMany({
             where: { member_id: memberId },
             orderBy: { issue_date: 'desc' },
         });
 
-        return certs.map((c: any) => this.mapToDTO(c as DBMedicalCertificate));
+        return certs.map((c) => this.mapToDTO(c as DBMedicalCertificate));
     }
 
     private mapToDTO(cert: DBMedicalCertificate): MedicalCertificateDTO {
