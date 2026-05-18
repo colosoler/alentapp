@@ -33,6 +33,7 @@ import { CreatePaymentUseCase } from './application/CreatePaymentUseCase.js';
 import { GetPaymentsUseCase } from './application/GetPaymentsUseCase.js';
 import { GetPaymentByIdUseCase } from './application/GetPaymentByIdUseCase.js';
 import { UpdatePaymentUseCase } from './application/UpdatePaymentUseCase.js';
+import { CancelPaymentUseCase } from './application/CancelPaymentUseCase.js';
 import { PaymentController } from './delivery/PaymentController.js';
 import { PostgresSportRepository } from './infrastructure/PostgresSportRepository.js';
 import { SportValidator } from './domain/services/SportValidator.js';
@@ -45,6 +46,8 @@ import { UpdateSportEnrollmentCountUseCase } from './application/UpdateSportEnro
 
 
 import { GetLockersUseCase } from './application/GetLockersUseCase.js';
+import { RentLockerUseCase } from './application/RentLockerUseCase.js';
+import { ReleaseLockerUseCase } from './application/ReleaseLockerUseCase.js';
 
 export function buildApp() {
     const server = Fastify({
@@ -130,6 +133,7 @@ export function buildApp() {
     const getPaymentsUseCase = new GetPaymentsUseCase(paymentRepo);
     const getPaymentByIdUseCase = new GetPaymentByIdUseCase(paymentRepo);
     const updatePaymentUseCase = new UpdatePaymentUseCase(paymentRepo);
+    const cancelPaymentUseCase = new CancelPaymentUseCase(paymentRepo);
 
     const sportRepo = new PostgresSportRepository();
     const sportValidator = new SportValidator();
@@ -173,14 +177,17 @@ export function buildApp() {
     const lockerRepo = new PostgresLockerRepository();
     const lockerValidator = new LockerValidator(lockerRepo);
     const createLockerUseCase = new CreateLockerUseCase(lockerRepo, lockerValidator);
-    const getLockersUseCase = new GetLockersUseCase(lockerRepo)
-    const lockerController = new LockerController(createLockerUseCase, getLockersUseCase);
     const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase, updateSportUseCase, updateSportEnrollmentCountUseCase);
+    const getLockersUseCase = new GetLockersUseCase(lockerRepo);
+    const rentLockersUseCase = new RentLockerUseCase(lockerRepo, memberRepo);
+    const releaseLockersUseCase = new ReleaseLockerUseCase(lockerRepo);
+    const lockerController = new LockerController(createLockerUseCase, getLockersUseCase, rentLockersUseCase, releaseLockersUseCase);
     const paymentController = new PaymentController(
         createPaymentUseCase,
         getPaymentsUseCase,
         getPaymentByIdUseCase,
         updatePaymentUseCase,
+        cancelPaymentUseCase,
     );
 
     server.get(
@@ -255,6 +262,10 @@ export function buildApp() {
         '/api/v1/payments/:id',
         paymentController.update.bind(paymentController),
     );
+    server.patch(
+        '/api/v1/payments/:id/cancel',
+        paymentController.cancel.bind(paymentController),
+    );
     server.post(
         '/api/v1/sports',
         sportController.create.bind(sportController),
@@ -281,6 +292,8 @@ export function buildApp() {
     // rutas de locker
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
     server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController));
+    server.patch('/api/v1/lockers/:id/rent', lockerController.rent.bind(lockerController));
+    server.patch('/api/v1/lockers/:id/release', lockerController.release.bind(lockerController));
 
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' });

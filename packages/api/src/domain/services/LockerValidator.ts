@@ -17,6 +17,13 @@ export class BadRequestError extends Error {
     }
 }
 
+export class NotFoundError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "NotFoundError";
+    }
+}
+
 // encargado de validar los CA 1,2,4 y 5
 export class LockerValidator {
     constructor(

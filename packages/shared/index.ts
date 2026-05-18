@@ -180,6 +180,7 @@ export interface UpdateSportRequest {
 export interface UpdateSportEnrollmentCountRequest {
   action: 'increment' | 'decrement';
 }
+// ==========================================
 // Locker
 // ==========================================
 
@@ -215,4 +216,8 @@ export type LockerListResponse = LockerItemResponse[];
 
 export interface GetLockersQuery {
   status?: string;
+}
+
+export interface RentLockerRequest {
+  memberId: string;
 }

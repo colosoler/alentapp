@@ -37,7 +37,8 @@ import {
 } from "../components/ui/select";
 import { toaster } from '../components/ui/toaster';
 import { lockerService } from '../services/lockers';
-import type { LockerStatus, LockerItemResponse } from '@alentapp/shared';
+import type { LockerStatus, LockerItemResponse, MemberDTO } from '@alentapp/shared';
+import { membersService } from '../services/members';
 
 
 const statusOptions = createListCollection({
@@ -66,6 +67,91 @@ export function Lockers() {
   const [lockers, setLockers] = useState<LockerItemResponse[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const [isRentDialogOpen, setIsRentDialogOpen] = useState(false);
+  const [selectedLocker, setSelectedLocker] = useState<LockerItemResponse | null>(null);
+  const [members, setMembers] = useState<MemberDTO[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [isRenting, setIsRenting] = useState(false);
+
+  const [releasingLockerId, setReleasingLockerId] = useState<string | null>(null);
+  const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
+  const [lockerToRelease, setLockerToRelease] = useState<LockerItemResponse | null>(null);
+
+  const openReleaseModal = (locker: LockerItemResponse) => {
+    setLockerToRelease(locker);
+    setIsReleaseDialogOpen(true);
+  };
+
+  const confirmRelease = async () => {
+    if (!lockerToRelease) return;
+    
+    setReleasingLockerId(lockerToRelease.id);
+    try {
+        await lockerService.release(lockerToRelease.id);
+        toaster.create({
+            title: 'Locker Liberado',
+            description: `El locker #${lockerToRelease.number} vuelve a estar disponible.`,
+            type: 'success',
+        });
+        setIsReleaseDialogOpen(false); // Cerramos el modal tras el éxito
+        fetchLockers(statusFilter);
+    } catch (error: any) {
+        toaster.create({
+            title: 'No se pudo liberar',
+            description: error.message,
+            type: 'error',
+        });
+    } finally {
+        setReleasingLockerId(null);
+    }
+  };
+
+  // Filtrado reactivo de miembros (Por Nombre o DNI)
+  const filteredMembers = members.filter(m => 
+      m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      m.dni.includes(searchQuery)
+  );
+
+  const openRentModal = async (locker: LockerItemResponse) => {
+    setSelectedLocker(locker);
+    setSearchQuery('');
+    setSelectedMemberId('');
+    setIsRentDialogOpen(true);
+    
+    if (members.length === 0) {
+        try {
+            const data = await membersService.getAll();
+            setMembers(data);
+        } catch (e) {
+            toaster.create({ title: 'Error', description: 'No se pudieron cargar los socios', type: 'error' });
+        }
+    }
+  };
+
+  const handleRent = async () => {
+    if (!selectedLocker || !selectedMemberId) return;
+    setIsRenting(true);
+    try {
+        await lockerService.rent(selectedLocker.id, { memberId: selectedMemberId });
+        toaster.create({
+            title: '¡Alquiler Exitoso!',
+            description: `El locker #${selectedLocker.number} fue asignado correctamente.`,
+            type: 'success',
+        });
+        setIsRentDialogOpen(false);
+        fetchLockers(statusFilter); // Refrescar grilla
+    } catch (error: any) {
+        toaster.create({
+            title: 'Error de asignación',
+            description: error.message,
+            type: 'error',
+        });
+    } finally {
+        setIsRenting(false);
+    }
+};
 
   const fetchLockers = async (statusParam?: string) => {
     setIsLoading(true);
@@ -316,29 +402,114 @@ export function Lockers() {
                         </Card.Body>
                         <Card.Footer>
                             <Flex justify="flex-end" w="100%" gap={2}>
-                                <Button 
-                                    size="sm" 
-                                    colorPalette="blue" 
-                                    disabled={locker.status !== 'Available'}
-                                    onClick={() => alert('Próximamente: TDD 0033 (Alquilar)')}
-                                >
-                                    Alquilar
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    colorPalette="red" 
-                                    variant="outline"
-                                    disabled={locker.status !== 'Occupied'}
-                                    onClick={() => alert('Próximamente: TDD 0034 (Liberar)')}
-                                >
-                                    Liberar
-                                </Button>
+                            <Button 
+                                size="sm" colorPalette="blue" 
+                                disabled={locker.status !== 'Available'}
+                                onClick={() => openRentModal(locker)}
+                            >
+                                Alquilar
+                            </Button>
+                            <Button 
+                                size="sm"   
+                                colorPalette="red" 
+                                variant="outline"
+                                disabled={locker.status !== 'Occupied'}
+                                onClick={() => openReleaseModal(locker)}
+                            >
+                                Liberar
+                            </Button>
                             </Flex>
                         </Card.Footer>
                     </Card.Root>
                 ))}
             </Grid>
           )}
+          <DialogRoot open={isRentDialogOpen} onOpenChange={(e) => setIsRentDialogOpen(e.open)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Asignar Locker #{selectedLocker?.number}</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <Stack gap="4">
+                        <Text color="fg.muted" fontSize="sm">
+                            Busque el socio por nombre o DNI para asignarle este casillero.
+                        </Text>
+                        
+                        <Field label="Buscar Socio">
+                            <Input 
+                                placeholder="Escriba DNI o Nombre..." 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </Field>
+
+                        <Box maxH="200px" overflowY="auto" borderWidth="1px" borderRadius="md">
+                            {filteredMembers.length === 0 ? (
+                                <Box p={3} textAlign="center"><Text fontSize="sm" color="gray.500">No hay resultados</Text></Box>
+                            ) : (
+                                <Stack gap="0">
+                                    {filteredMembers.map((member) => (
+                                        <Box 
+                                            key={member.id} 
+                                            p={3} 
+                                            borderBottomWidth="1px"
+                                            bg={selectedMemberId === member.id ? 'blue.50' : 'transparent'}
+                                            _hover={{ bg: 'gray.50', cursor: 'pointer' }}
+                                            onClick={() => setSelectedMemberId(member.id)}
+                                        >
+                                            <Text fontWeight="semibold" fontSize="sm">{member.name}</Text>
+                                            <Text fontSize="xs" color="gray.500">DNI: {member.dni}</Text>
+                                        </Box>
+                                    ))}
+                                </Stack>
+                            )}
+                        </Box>
+                    </Stack>
+                </DialogBody>
+                <DialogFooter>
+                    <DialogActionTrigger asChild>
+                        <Button variant="outline">Cancelar</Button>
+                    </DialogActionTrigger>
+                    <Button 
+                        colorPalette="blue" 
+                        loading={isRenting} 
+                        disabled={!selectedMemberId}
+                        onClick={handleRent}
+                    >
+                        Confirmar Alquiler
+                    </Button>
+                </DialogFooter>
+                <DialogCloseTrigger />
+            </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isReleaseDialogOpen} onOpenChange={(e) => setIsReleaseDialogOpen(e.open)}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Confirmar Liberación</DialogTitle>
+              </DialogHeader>
+              <DialogBody>
+                  <Text>
+                      ¿Estás seguro que deseas desvincular al socio y liberar el Locker <strong>#{lockerToRelease?.number}</strong>?
+                  </Text>
+                  <Text fontSize="sm" color="fg.muted" mt={2}>
+                      Esta acción cambiará el estado a "Disponible" y no se puede deshacer.
+                  </Text>
+              </DialogBody>
+              <DialogFooter>
+                  <DialogActionTrigger asChild>
+                      <Button variant="outline">Cancelar</Button>
+                  </DialogActionTrigger>
+                  <Button 
+                      colorPalette="red" 
+                      loading={releasingLockerId === lockerToRelease?.id}
+                      onClick={confirmRelease}
+                  >
+                      Confirmar y Liberar
+                  </Button>
+              </DialogFooter>
+              <DialogCloseTrigger />
+          </DialogContent>
+        </DialogRoot>
         </Box>
 
       </Stack>
