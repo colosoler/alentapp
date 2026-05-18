@@ -27,6 +27,9 @@ import { PostgresMedicalCertificateRepository } from './infrastructure/PostgresM
 import { MedicalCertificateValidator } from './domain/services/MedicalCertificateValidator.js';
 import { CreateMedicalCertificateUseCase } from './application/CreateMedicalCertificateUseCase.js';
 import { DeleteMedicalCertificateUseCase } from './application/DeleteMedicalCertificateUseCase.js';
+import { GetMedicalCertificateUseCase } from './application/GetMedicalCertificateUseCase.js';
+import { ListMemberMedicalCertificatesUseCase } from './application/ListMemberMedicalCertificatesUseCase.js';
+import { GetMemberMedicalCertificateStatusUseCase } from './application/GetMemberMedicalCertificateStatusUseCase.js';
 import { MedicalCertificateController } from './delivery/MedicalCertificateController.js';
 import { PostgresLockerRepository } from './infrastructure/PostgresLockerRepository.js';
 import { LockerValidator } from './domain/services/LockerValidator.js';
@@ -175,7 +178,16 @@ export function buildApp() {
     const medicalCertValidator = new MedicalCertificateValidator();
     const createMedicalCertUseCase = new CreateMedicalCertificateUseCase(medicalCertRepo, memberRepo, medicalCertValidator);
     const deleteMedicalCertUseCase = new DeleteMedicalCertificateUseCase(medicalCertRepo);
-    const medicalCertificateController = new MedicalCertificateController(createMedicalCertUseCase, deleteMedicalCertUseCase);
+    const getMedicalCertUseCase = new GetMedicalCertificateUseCase(medicalCertRepo);
+    const listMemberMedicalCertsUseCase = new ListMemberMedicalCertificatesUseCase(medicalCertRepo);
+    const getMemberMedicalCertStatusUseCase = new GetMemberMedicalCertificateStatusUseCase(medicalCertRepo, memberRepo);
+    const medicalCertificateController = new MedicalCertificateController(
+        createMedicalCertUseCase,
+        deleteMedicalCertUseCase,
+        getMedicalCertUseCase,
+        listMemberMedicalCertsUseCase,
+        getMemberMedicalCertStatusUseCase,
+    );
     const loanController = new LoanController(
         createLoanUseCase,
         getLoansUseCase,
@@ -303,7 +315,10 @@ export function buildApp() {
     server.get('/api/v1/equipment-loan', loanController.getAll.bind(loanController));
     server.patch('/api/v1/equipment-loan/:id/status', loanController.updateStatus.bind(loanController));
     server.post('/api/v1/medical-certificates', medicalCertificateController.create.bind(medicalCertificateController));
+    server.get('/api/v1/medical-certificates/:id', medicalCertificateController.getById.bind(medicalCertificateController));
     server.delete('/api/v1/medical-certificates/:id', medicalCertificateController.delete.bind(medicalCertificateController));
+    server.get('/api/v1/members/:memberId/medical-certificates', medicalCertificateController.listByMember.bind(medicalCertificateController));
+    server.get('/api/v1/members/:memberId/medical-certificate-status', medicalCertificateController.memberStatus.bind(medicalCertificateController));
     // rutas de locker
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
     server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController));
