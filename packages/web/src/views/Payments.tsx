@@ -125,6 +125,7 @@ export function PaymentsView() {
       month: payment.month,
       year: payment.year,
       dueDate: payment.dueDate.split('T')[0],
+      memberId: payment.memberId,
       paymentDate: payment.paymentDate ? payment.paymentDate.split('T')[0] : undefined,
     });
     setFormError(null);

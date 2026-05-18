@@ -26,6 +26,9 @@ Permitir corregir o extender la vigencia de un certificado medico existente cuan
 - El sistema debe validar que la fecha de vencimiento, cuando exista, sea posterior a la fecha de emision.
 - El sistema debe permitir cambiar el estado del certificado entre `Active` e `Inactive`.
 - Si la actualizacion es correcta, debe retornar los datos actualizados del certificado.
+ - El sistema debe permitir actualizar o reemplazar el archivo PNG asociado al certificado.
+ - Si se actualiza el archivo, debe validarse formato PNG y límite de 5MB.
+ - La respuesta debe incluir la URL/identificador del nuevo archivo cuando proceda.
 
 ## Diseño Técnico (RFC)
 
@@ -43,6 +46,8 @@ Todos los campos son opcionales porque se trata de una actualizacion parcial.
     status?: 'Active' | 'Inactive';
 }
 ```
+
+Para la actualización del archivo, el endpoint aceptará `multipart/form-data` con el campo `file` (PNG) o bien un JSON parcial si sólo se actualizan campos textuales.
 
 - Response (`MedicalCertificateResponse`):
 

@@ -34,6 +34,7 @@ model Member {
     status      MemberStatus    @default(Activo)
     created_at  DateTime        @default(now())
     disciplines Discipline[]
+    medicalCertificates MedicalCertificate[]
     loans       EquipmentLoan[]
     lockers     Locker[]
     payments    Payment[]
@@ -100,6 +101,28 @@ model Locker {
     member      Member?         @relation(fields: [member_id], references: [id])
 
     @@map("lockers")
+}
+
+enum MedicalCertificateStatus {
+    Active
+    Inactive
+}
+
+model MedicalCertificate {
+    id              String   @id @default(uuid()) @db.Uuid
+    member_id       String   @db.Uuid
+    issue_date      DateTime
+    expiration_date DateTime?
+    file_url        String?
+    status          MedicalCertificateStatus @default(Active)
+    invalidated_at  DateTime?
+    created_at      DateTime @default(now())
+    updated_at      DateTime @default(now())
+
+    member          Member   @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+    @@index([member_id])
+    @@map("medical_certificates")
 }
    
 enum PaymentStatus {

@@ -1,5 +1,9 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import fs from 'fs';
+import path from 'path';
 import { PostgresMemberRepository } from './infrastructure/PostgresMemberRepository.js';
 import { MemberValidator } from './domain/services/MemberValidator.js';
 import { CreateMemberUseCase } from './application/NewMemberUseCase.js';
@@ -23,6 +27,16 @@ import { GetLoansUseCase } from './application/GetLoansUseCase.js';
 import { DeleteLoanUseCase } from './application/DeleteLoanUseCase.js';
 import { UpdateLoanStatusUseCase } from './application/UpdateLoanStatusUseCase.js';
 import { LoanController } from './delivery/LoanController.js';
+import { PostgresMedicalCertificateRepository } from './infrastructure/PostgresMedicalCertificateRepository.js';
+import { MedicalCertificateValidator } from './domain/services/MedicalCertificateValidator.js';
+import { CreateMedicalCertificateUseCase } from './application/CreateMedicalCertificateUseCase.js';
+import { GetMedicalCertificatesUseCase } from './application/GetMedicalCertificatesUseCase.js';
+import { GetMedicalCertificateByIdUseCase } from './application/GetMedicalCertificateByIdUseCase.js';
+import { ListMemberMedicalCertificatesUseCase } from './application/ListMemberMedicalCertificatesUseCase.js';
+import { GetMemberMedicalCertificateStatusUseCase } from './application/GetMemberMedicalCertificateStatusUseCase.js';
+import { UpdateMedicalCertificateUseCase } from './application/UpdateMedicalCertificateUseCase.js';
+import { DeleteMedicalCertificateUseCase } from './application/DeleteMedicalCertificateUseCase.js';
+import { MedicalCertificateController } from './delivery/MedicalCertificateController.js';
 import { PostgresLockerRepository } from './infrastructure/PostgresLockerRepository.js';
 import { LockerValidator } from './domain/services/LockerValidator.js';
 import { CreateLockerUseCase } from './application/CreateLockerUseCase.js';
@@ -75,6 +89,17 @@ export function buildApp() {
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true,
+    });
+
+    server.register(multipart, {
+        limits: { fileSize: 5 * 1024 * 1024 },
+    });
+
+    const uploadsPath = path.join(process.cwd(), 'uploads');
+    fs.mkdirSync(uploadsPath, { recursive: true });
+    server.register(fastifyStatic, {
+        root: uploadsPath,
+        prefix: '/uploads/',
     });
 
     const memberRepo = new PostgresMemberRepository();
@@ -169,6 +194,24 @@ export function buildApp() {
         deleteDisciplineUseCase,
     );
 
+    const medicalCertRepo = new PostgresMedicalCertificateRepository();
+    const medicalCertValidator = new MedicalCertificateValidator();
+    const createMedicalCertUseCase = new CreateMedicalCertificateUseCase(medicalCertRepo, memberRepo, medicalCertValidator);
+    const getMedicalCertsUseCase = new GetMedicalCertificatesUseCase(medicalCertRepo);
+    const getMedicalCertByIdUseCase = new GetMedicalCertificateByIdUseCase(medicalCertRepo);
+    const listMemberMedicalCertsUseCase = new ListMemberMedicalCertificatesUseCase(medicalCertRepo);
+    const getMemberMedicalStatusUseCase = new GetMemberMedicalCertificateStatusUseCase(medicalCertRepo);
+    const updateMedicalCertUseCase = new UpdateMedicalCertificateUseCase(medicalCertRepo, medicalCertValidator);
+    const deleteMedicalCertUseCase = new DeleteMedicalCertificateUseCase(medicalCertRepo);
+    const medicalCertificateController = new MedicalCertificateController(
+        createMedicalCertUseCase,
+        getMedicalCertsUseCase,
+        getMedicalCertByIdUseCase,
+        listMemberMedicalCertsUseCase,
+        getMemberMedicalStatusUseCase,
+        updateMedicalCertUseCase,
+        deleteMedicalCertUseCase,
+    );
     const loanController = new LoanController(
         createLoanUseCase,
         getLoansUseCase,
@@ -301,6 +344,34 @@ export function buildApp() {
         sportController.delete.bind(sportController),
     );
 
+    server.post(
+        '/api/v1/medical-certificates',
+        medicalCertificateController.create.bind(medicalCertificateController),
+    );
+    server.get(
+        '/api/v1/medical-certificates',
+        medicalCertificateController.getAll.bind(medicalCertificateController),
+    );
+    server.get(
+        '/api/v1/medical-certificates/:id',
+        medicalCertificateController.getById.bind(medicalCertificateController),
+    );
+    server.get(
+        '/api/v1/members/:memberId/medical-certificates',
+        medicalCertificateController.getByMember.bind(medicalCertificateController),
+    );
+    server.get(
+        '/api/v1/members/:memberId/medical-certificate-status',
+        medicalCertificateController.getMemberStatus.bind(medicalCertificateController),
+    );
+    server.patch(
+        '/api/v1/medical-certificates/:id',
+        medicalCertificateController.update.bind(medicalCertificateController),
+    );
+    server.delete(
+        '/api/v1/medical-certificates/:id',
+        medicalCertificateController.delete.bind(medicalCertificateController),
+    );
     // rutas de locker
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
     server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController));
@@ -323,9 +394,15 @@ if (process.argv[1] && process.argv[1].endsWith('app.ts')) {
     const server = buildApp();
     const port = parseInt(process.env.PORT || '3000', 10);
 
-    server.listen({ port, host: '0.0.0.0' }, () =>
-        server.log.info(`API server running on http://localhost:${port}`),
-    );
+    server
+        .listen({ port, host: '0.0.0.0' })
+        .then(() => {
+            server.log.info(`API server running on http://localhost:${port}`);
+        })
+        .catch((error) => {
+            server.log.error(error);
+            process.exit(1);
+        });
 
     ['SIGINT', 'SIGTERM'].forEach((signal) => {
         process.on(signal, async () => {

@@ -25,6 +25,7 @@ Permitir consultar certificados medicos para conocer si un socio tiene un certif
 - El sistema debe permitir consultar todos los certificados de un socio.
 - El sistema debe indicar cual es el certificado activo actual del socio.
 - Si el socio no tiene certificados, debe devolver una lista vacia.
+ - Las respuestas de consulta deben incluir `file_url` cuando exista, y debe ser posible descargar/ver el PNG asociado.
 
 ## Diseño Técnico (RFC)
 
@@ -53,6 +54,8 @@ Permitir consultar certificados medicos para conocer si un socio tiene un certif
 MedicalCertificateResponse[]
 ```
 
+El `MedicalCertificateResponse` incluirá `file_url?: string` cuando exista un archivo asociado.
+
 - Endpoint: `GET /api/v1/members/:memberId/medical-certificates/active`
 - Response (`MemberMedicalCertificateStatusResponse`):
 
@@ -62,6 +65,8 @@ MedicalCertificateResponse[]
     hasActiveCertificate: boolean;
     activeCertificate?: MedicalCertificateResponse;
 }
+
+Si el certificado activo incluye un archivo, `activeCertificate.file_url` deberá estar presente.
 ```
 
 ### Componentes de Arquitectura Hexagonal
