@@ -1,0 +1,1 @@
+-- No-op migration added to satisfy Prisma after merge.
