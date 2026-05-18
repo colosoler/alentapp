@@ -33,6 +33,7 @@ import { CreatePaymentUseCase } from './application/CreatePaymentUseCase.js';
 import { GetPaymentsUseCase } from './application/GetPaymentsUseCase.js';
 import { GetPaymentByIdUseCase } from './application/GetPaymentByIdUseCase.js';
 import { UpdatePaymentUseCase } from './application/UpdatePaymentUseCase.js';
+import { CancelPaymentUseCase } from './application/CancelPaymentUseCase.js';
 import { PaymentController } from './delivery/PaymentController.js';
 import { PostgresSportRepository } from './infrastructure/PostgresSportRepository.js';
 import { SportValidator } from './domain/services/SportValidator.js';
@@ -40,6 +41,9 @@ import { CreateSportUseCase } from './application/CreateSportUseCase.js';
 import { SportController } from './delivery/SportController.js';
 import { GetSportsUseCase } from './application/GetSportsUseCase.js';
 import { GetSportByIdUseCase } from './application/GetSportByIdUseCase.js';
+import { UpdateSportUseCase } from './application/UpdateSportUseCase.js';
+import { UpdateSportEnrollmentCountUseCase } from './application/UpdateSportEnrollmentCountUseCase.js';
+
 
 import { GetLockersUseCase } from './application/GetLockersUseCase.js';
 import { RentLockerUseCase } from './application/RentLockerUseCase.js';
@@ -130,6 +134,7 @@ export function buildApp() {
     const getPaymentsUseCase = new GetPaymentsUseCase(paymentRepo);
     const getPaymentByIdUseCase = new GetPaymentByIdUseCase(paymentRepo);
     const updatePaymentUseCase = new UpdatePaymentUseCase(paymentRepo);
+    const cancelPaymentUseCase = new CancelPaymentUseCase(paymentRepo);
 
     const sportRepo = new PostgresSportRepository();
     const sportValidator = new SportValidator();
@@ -139,6 +144,12 @@ export function buildApp() {
     );
     const getSportsUseCase = new GetSportsUseCase(sportRepo);
     const getSportByIdUseCase = new GetSportByIdUseCase(sportRepo);
+    const updateSportUseCase = new UpdateSportUseCase(sportRepo, sportValidator);
+    const updateSportEnrollmentCountUseCase = new UpdateSportEnrollmentCountUseCase(
+        sportRepo,
+        sportValidator,
+    );
+
 
 
     const memberController = new MemberController(
@@ -167,17 +178,18 @@ export function buildApp() {
     const lockerRepo = new PostgresLockerRepository();
     const lockerValidator = new LockerValidator(lockerRepo);
     const createLockerUseCase = new CreateLockerUseCase(lockerRepo, lockerValidator);
+    const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase, updateSportUseCase, updateSportEnrollmentCountUseCase);
     const getLockersUseCase = new GetLockersUseCase(lockerRepo);
     const rentLockersUseCase = new RentLockerUseCase(lockerRepo, memberRepo);
     const releaseLockersUseCase = new ReleaseLockerUseCase(lockerRepo);
     const updateLockerUseCase = new UpdateLockerUseCase(lockerRepo);
     const lockerController = new LockerController(createLockerUseCase, getLockersUseCase, rentLockersUseCase, releaseLockersUseCase, updateLockerUseCase);
-    const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase);
     const paymentController = new PaymentController(
         createPaymentUseCase,
         getPaymentsUseCase,
         getPaymentByIdUseCase,
         updatePaymentUseCase,
+        cancelPaymentUseCase,
     );
 
     server.get(
@@ -252,6 +264,10 @@ export function buildApp() {
         '/api/v1/payments/:id',
         paymentController.update.bind(paymentController),
     );
+    server.patch(
+        '/api/v1/payments/:id/cancel',
+        paymentController.cancel.bind(paymentController),
+    );
     server.post(
         '/api/v1/sports',
         sportController.create.bind(sportController),
@@ -264,6 +280,15 @@ export function buildApp() {
     server.get(
         '/api/v1/sports/:id',
         sportController.getById.bind(sportController),
+    );
+    server.patch(
+        '/api/v1/sports/:id',
+        sportController.update.bind(sportController),
+    );
+
+    server.patch(
+        '/api/v1/sports/:id/enrollment-count',
+        sportController.updateEnrollmentCount.bind(sportController),
     );
 
     // rutas de locker
