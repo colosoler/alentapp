@@ -46,6 +46,9 @@ import { UpdateSportEnrollmentCountUseCase } from './application/UpdateSportEnro
 import { DeleteSportUseCase } from './application/DeleteSportUseCase.js';
 
 import { GetLockersUseCase } from './application/GetLockersUseCase.js';
+import { RentLockerUseCase } from './application/RentLockerUseCase.js';
+import { ReleaseLockerUseCase } from './application/ReleaseLockerUseCase.js';
+import { UpdateLockerUseCase } from './application/UpdateLockerUseCase.js';
 
 export function buildApp() {
     const server = Fastify({
@@ -174,9 +177,12 @@ export function buildApp() {
     const lockerRepo = new PostgresLockerRepository();
     const lockerValidator = new LockerValidator(lockerRepo);
     const createLockerUseCase = new CreateLockerUseCase(lockerRepo, lockerValidator);
-    const getLockersUseCase = new GetLockersUseCase(lockerRepo)
-    const lockerController = new LockerController(createLockerUseCase, getLockersUseCase);
     const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase, updateSportUseCase, updateSportEnrollmentCountUseCase, deleteSportUseCase);
+    const getLockersUseCase = new GetLockersUseCase(lockerRepo);
+    const rentLockersUseCase = new RentLockerUseCase(lockerRepo, memberRepo);
+    const releaseLockersUseCase = new ReleaseLockerUseCase(lockerRepo);
+    const updateLockerUseCase = new UpdateLockerUseCase(lockerRepo);
+    const lockerController = new LockerController(createLockerUseCase, getLockersUseCase, rentLockersUseCase, releaseLockersUseCase, updateLockerUseCase);
     const paymentController = new PaymentController(
         createPaymentUseCase,
         getPaymentsUseCase,
@@ -291,6 +297,9 @@ export function buildApp() {
     // rutas de locker
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
     server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController));
+    server.patch('/api/v1/lockers/:id/rent', lockerController.rent.bind(lockerController));
+    server.patch('/api/v1/lockers/:id/release', lockerController.release.bind(lockerController));
+    server.patch('/api/v1/lockers/:id', lockerController.update.bind(lockerController));
 
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' });
