@@ -5,66 +5,66 @@ export type MemberCategory = 'Pleno' | 'Cadete' | 'Honorario';
 export type MemberStatus = 'Activo' | 'Moroso' | 'Suspendido';
 
 export interface MemberDTO {
-  id: string; // UUID
-  dni: string;
-  name: string;
-  email: string;
-  birthdate: string; // ISO Date String (YYYY-MM-DD)
-  category: MemberCategory;
-  status: MemberStatus;
-  created_at: string; // ISO Date String
+    id: string; // UUID
+    dni: string;
+    name: string;
+    email: string;
+    birthdate: string; // ISO Date String (YYYY-MM-DD)
+    category: MemberCategory;
+    status: MemberStatus;
+    created_at: string; // ISO Date String
 }
 
 export interface CreateMemberRequest {
-  dni: string;
-  name: string;
-  email: string;
-  birthdate: string; // ISO Date String (YYYY-MM-DD)
-  category: MemberCategory;
+    dni: string;
+    name: string;
+    email: string;
+    birthdate: string; // ISO Date String (YYYY-MM-DD)
+    category: MemberCategory;
 }
 
 export interface UpdateMemberRequest {
-  dni?: string;
-  name?: string;
-  email?: string;
-  birthdate?: string; // ISO Date String (YYYY-MM-DD)
-  category?: MemberCategory;
-  status?: MemberStatus;
+    dni?: string;
+    name?: string;
+    email?: string;
+    birthdate?: string; // ISO Date String (YYYY-MM-DD)
+    category?: MemberCategory;
+    status?: MemberStatus;
 }
 
 // ==========================================
 // Discipline
 // ==========================================
 export interface DisciplineDTO {
-  id: string; // UUID
-  reason: string;
-  startDate: string; // ISO Date String
-  endDate: string; // ISO Date String
-  isTotalSuspension: boolean;
-  memberId: string;
+    id: string; // UUID
+    reason: string;
+    startDate: string; // ISO Date String
+    endDate: string; // ISO Date String
+    isTotalSuspension: boolean;
+    memberId: string;
 }
 
 export type DisciplineResponse = DisciplineDTO;
 
 export interface CreateDisciplineRequest {
-  reason: string;
-  startDate: string; // ISO Date String
-  endDate: string; // ISO Date String
-  isTotalSuspension: boolean;
-  memberId: string;
+    reason: string;
+    startDate: string; // ISO Date String
+    endDate: string; // ISO Date String
+    isTotalSuspension: boolean;
+    memberId: string;
 }
 
 export interface UpdateDisciplineRequest {
-  reason?: string;
-  startDate?: string; // ISO Date String
-  endDate?: string; // ISO Date String
-  isTotalSuspension?: boolean;
+    reason?: string;
+    startDate?: string; // ISO Date String
+    endDate?: string; // ISO Date String
+    isTotalSuspension?: boolean;
 }
 
 export interface MemberDisciplineStatusResponse {
-  memberId: string;
-  isSuspended: boolean;
-  activeTotalSuspension?: DisciplineResponse;
+    memberId: string;
+    isSuspended: boolean;
+    activeTotalSuspension?: DisciplineResponse;
 }
 
 // ==========================================
@@ -73,18 +73,18 @@ export interface MemberDisciplineStatusResponse {
 export type LoanStatus = 'Loaned' | 'Returned' | 'Damaged';
 
 export interface LoanDTO {
-  id: string; // UUID
-  member_id: string;
-  item_name: string;
-  loan_date: string; // ISO Date String
-  due_date: string; // ISO Date String
-  status: LoanStatus;
+    id: string; // UUID
+    member_id: string;
+    item_name: string;
+    loan_date: string; // ISO Date String
+    due_date: string; // ISO Date String
+    status: LoanStatus;
 }
 
 export interface CreateLoanRequest {
-  member_id: string;
-  item_name: string;
-  due_date: string; // ISO Date String
+    member_id: string;
+    item_name: string;
+    due_date: string; // ISO Date String
 }
 
 export interface GetLoansQuery {
@@ -122,4 +122,123 @@ export interface CreateMedicalCertificateRequest {
   member_id: string;
   issue_date: string; // ISO Date String
   expiration_date?: string; // ISO Date String
+}
+// ==========================================
+// Payment
+// ==========================================
+export type PaymentStatus = 'Pending' | 'Paid' | 'Canceled';
+
+export interface CreatePaymentRequest {
+    amount: number;
+    month: number; // 1–12
+    year: number;
+    dueDate: string; // ISO Date String (YYYY-MM-DD)
+    memberId: string;
+}
+
+export interface PaymentResponse {
+    id: string;
+    amount: number;
+    month: number;
+    year: number;
+    status: PaymentStatus;
+    dueDate: string;
+    paymentDate: string | null;
+    memberId: string;
+}
+
+export interface GetPaymentsQuery {
+    memberId?: string;
+    status?: PaymentStatus;
+    month?: number;
+    year?: number;
+}
+
+export interface UpdatePaymentRequest {
+    amount?: number;
+    month?: number;
+    year?: number;
+    dueDate?: string;
+    paymentDate?: string;
+    status?: "Paid";
+}
+
+// ==========================================
+// Sport
+// ==========================================
+
+export interface SportDTO {
+  id: string; // UUID
+  name: string;
+  description: string;
+  max_capacity: number;
+  current_enrollment_count: number;
+  additional_price: number;
+  requires_medical_certificate: boolean;
+}
+
+export type SportResponse = SportDTO;
+
+export interface CreateSportRequest {
+  name: string;
+  description: string;
+  max_capacity: number;
+  additional_price: number;
+  requires_medical_certificate: boolean;
+}
+
+export type SportListResponse = SportDTO[];
+
+export interface GetSportsQuery {
+  name?: string;
+}
+
+export interface UpdateSportRequest {
+  description?: string;
+  max_capacity?: number;
+}
+
+export interface UpdateSportEnrollmentCountRequest {
+  action: 'increment' | 'decrement';
+}
+// ==========================================
+// Locker
+// ==========================================
+
+export type LockerStatus = 'Available' | 'Maintenance' | 'Occupied';
+
+export interface LockerResponse {
+  id: string;
+  number: number;
+  location: string;
+  status: LockerStatus;
+  memberId: string | null;
+}
+
+export interface CreateLockerRequest {
+  number: number;
+  location: string;
+  status?: 'Available' | 'Maintenance' // no puede ser occupied en la creacion
+}
+
+export interface LockerItemResponse {
+  id: string;
+  number: number;
+  location: string;
+  status: LockerStatus;
+  memberId: string | null;
+  member: {
+      name: string;
+      dni: string;
+  } | null;
+}
+
+export type LockerListResponse = LockerItemResponse[];
+
+export interface GetLockersQuery {
+  status?: string;
+}
+
+export interface RentLockerRequest {
+  memberId: string;
 }

@@ -38,6 +38,7 @@ Permitir a los administrativos consultar los deportes registrados en el club. Cu
     name: string;
     description: string;
     max_capacity: number;
+    current_enrollment_count: number;
     additional_price: number;
     requires_medical_certificate: boolean;
 }

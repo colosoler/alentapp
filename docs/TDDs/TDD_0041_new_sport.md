@@ -14,7 +14,9 @@ titulo: Alta de Deporte
 
 Permite registrar un nuevo deporte en el club Alentapp. Se debe poder definir su nombre, descripcion, capacidad maxima, el precio adicional y si requiere certificado medico.
 
-Este TDD es necesario porque es la que dicta las reglas que luego la inscripción (Enrollment) debe cumplir.
+Al crear el deporte, el sistema deberá inicializar el cupo actual en 0, sin asociarlo todavía a miembros ni registrar inscripciones individuales.
+
+Este TDD es necesario porque define las reglas básicas de disponibilidad de cupo que luego podran ser utilizadas por la inscripción (`Enrollment`) en una implementación futura.
 
 ### User Persona
 
@@ -23,11 +25,12 @@ Este TDD es necesario porque es la que dicta las reglas que luego la inscripció
 
 ### Criterios de Aceptación
 
--El sistema debe validar que el nombre no este vacio y sea unico.
--El sistema debe validar que la descripcion no este vacia.
--El sistema debe validar que `max_capacity` sea un numero entero, mayor a cero.
--El sistema debe validar que `additional_price` sea un numero flotante y no vacio.
--El sistema debe registrar si es necesario un certificado medico.
+- El sistema debe validar que el nombre no este vacio y sea unico.
+- El sistema debe validar que la descripcion no este vacia.
+- El sistema debe validar que `max_capacity` sea un numero entero, mayor a cero.
+- El sistema debe validar que `additional_price` sea un numero flotante y no vacio.
+- El sistema debe registrar si es necesario un certificado medico.
+-  Al crear un deporte, `current_enrollment_count` debe inicializarse en 0.
 - Al finalizar, el sistema debe mostrar un mensaje de éxito y limpiar el formulario.
 
 ## Diseño Técnico (RFC)
@@ -39,6 +42,7 @@ Se definirá la entidad `Sport` con las siguientes propiedades y restricciones:
 - `name`: string, único e inmutable, requerido.
 - `description`: string, requerido.
 - `max_capacity`: int, requerido y validado.
+- `current_enrollment_count`: int, requerido, inicia en 0.
 - `additional_price`: float, requerido.
 - `requires_medical_certificate`: boolean, requerido.
 
@@ -64,6 +68,7 @@ Se definirá la entidad `Sport` con las siguientes propiedades y restricciones:
     name: string;
     description: string;
     max_capacity: number;
+    current_enrollment_count: number;
     additional_price: number;
     requires_medical_certificate: boolean;
 }

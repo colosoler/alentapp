@@ -73,7 +73,7 @@ Todos los campos son opcionales porque se trata de una actualizacion parcial.
 | ID invalido                   | Mensaje: "El id del certificado no es valido"                         | 400 Bad Request           |
 | Certificado inexistente       | Mensaje: "El certificado no existe"                                   | 404 Not Found             |
 | Fecha de emision invalida     | Mensaje: "La fecha de emision no es valida"                           | 400 Bad Request           |
-| Fecha de vencimiento invalida | Mensaje: "La fecha de vencimiento debe ser posterior a la de emision" | 400 Bad Request           |
+| Fecha de vencimiento invalida | Mensaje: "La fecha de vencimiento es invalida o es anterior a la de emision" | 400 Bad Request           |
 | Actualizacion exitosa         | Datos actualizados del certificado                                    | 200 OK                    |
 | Error de conexión a DB        | Mensaje: "Error interno, reintente más tarde"                         | 500 Internal Server Error |
 

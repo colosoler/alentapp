@@ -20,7 +20,7 @@ export class CreateLoanUseCase {
             throw new Error('El socio especificado no existe');
         }
 
-        if (existingMember.category === 'Cadet') {
+        if (existingMember.category === 'Cadete') {
             throw new Error('Los socios Cadetes tienen prohibido solicitar material');
         }
 

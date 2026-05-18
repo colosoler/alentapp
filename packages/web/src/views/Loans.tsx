@@ -11,7 +11,7 @@ import {
   Center,
   Input
 } from "@chakra-ui/react";
-import { LuPlus, LuRefreshCw, LuFilter, LuTrash2, LuCheck } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuFilter, LuTrash2, LuCheck, LuSlidersHorizontal } from "react-icons/lu";
 import { useEffect, useState, useMemo } from "react"; // Añadido useMemo
 import { loansService } from "../services/loans";
 import type { LoanWithMemberDTO } from "@alentapp/shared";
@@ -191,7 +191,7 @@ export function LoansView() {
           </HStack>
         </Flex>
 
-        <Flex gap="4" align="center">
+<Flex gap="4" align="center">
           <Input
             placeholder="Buscar por socio o ítem..."
             value={searchQuery}
@@ -206,8 +206,13 @@ export function LoansView() {
               setStatusFilter(e.value[0] || "");
             }}
           >
-            <SelectTrigger>
-              <SelectValueText placeholder="Filtrar por estado" />
+            <SelectTrigger
+              bg="bg.subtle"
+              borderWidth="1px"
+              _hover={{ bg: "bg.muted" }}
+            >
+              <LuSlidersHorizontal />
+              <SelectValueText placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
               {statusOptions.items.map((opt) => (
@@ -217,9 +222,6 @@ export function LoansView() {
               ))}
             </SelectContent>
           </SelectRoot>
-          <Button onClick={fetchLoans} variant="outline">
-            <LuFilter /> Aplicar
-          </Button>
         </Flex>
 
         <DialogContent>
@@ -434,7 +436,7 @@ export function LoansView() {
                             variant="ghost"
                             colorPalette="red"
                             onClick={() => openDeleteDialog(loan.id)}
-                            disabled={true}
+                            disabled={loan.status !== 'Loaned'}
                           >
                             <LuTrash2 />
                           </Button>
