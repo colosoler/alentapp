@@ -362,17 +362,9 @@ export function MedicalCertificatesView() {
         </Flex>
 
         <HStack gap="4" wrap="wrap">
-          <Box flex="1" minW="180px" bg="bg.panel" borderWidth="1px" borderRadius="xl" p="4" boxShadow="sm">
-            <Text color="fg.muted" fontSize="sm">Total certificados</Text>
-            <Heading size="xl">{certs.length}</Heading>
-          </Box>
-          <Box flex="1" minW="180px" bg="bg.panel" borderWidth="1px" borderRadius="xl" p="4" boxShadow="sm">
+          <Box flex="1" minW="240px" bg="bg.panel" borderWidth="1px" borderRadius="xl" p="4" boxShadow="sm">
             <Text color="fg.muted" fontSize="sm">Activos</Text>
             <Heading size="xl">{totalActiveCertificates}</Heading>
-          </Box>
-          <Box flex="1" minW="180px" bg="bg.panel" borderWidth="1px" borderRadius="xl" p="4" boxShadow="sm">
-            <Text color="fg.muted" fontSize="sm">Socios con certificado activo</Text>
-            <Heading size="xl">{totalMembersWithActiveCertificate}</Heading>
           </Box>
         </HStack>
 
