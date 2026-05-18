@@ -27,6 +27,9 @@ import { PostgresMedicalCertificateRepository } from './infrastructure/PostgresM
 import { MedicalCertificateValidator } from './domain/services/MedicalCertificateValidator.js';
 import { CreateMedicalCertificateUseCase } from './application/CreateMedicalCertificateUseCase.js';
 import { GetMedicalCertificatesUseCase } from './application/GetMedicalCertificatesUseCase.js';
+import { GetMedicalCertificateByIdUseCase } from './application/GetMedicalCertificateByIdUseCase.js';
+import { ListMemberMedicalCertificatesUseCase } from './application/ListMemberMedicalCertificatesUseCase.js';
+import { GetMemberMedicalCertificateStatusUseCase } from './application/GetMemberMedicalCertificateStatusUseCase.js';
 import { UpdateMedicalCertificateUseCase } from './application/UpdateMedicalCertificateUseCase.js';
 import { DeleteMedicalCertificateUseCase } from './application/DeleteMedicalCertificateUseCase.js';
 import { MedicalCertificateController } from './delivery/MedicalCertificateController.js';
@@ -180,11 +183,17 @@ export function buildApp() {
     const medicalCertValidator = new MedicalCertificateValidator();
     const createMedicalCertUseCase = new CreateMedicalCertificateUseCase(medicalCertRepo, memberRepo, medicalCertValidator);
     const getMedicalCertsUseCase = new GetMedicalCertificatesUseCase(medicalCertRepo);
+    const getMedicalCertByIdUseCase = new GetMedicalCertificateByIdUseCase(medicalCertRepo);
+    const listMemberMedicalCertsUseCase = new ListMemberMedicalCertificatesUseCase(medicalCertRepo);
+    const getMemberMedicalStatusUseCase = new GetMemberMedicalCertificateStatusUseCase(medicalCertRepo);
     const updateMedicalCertUseCase = new UpdateMedicalCertificateUseCase(medicalCertRepo, medicalCertValidator);
     const deleteMedicalCertUseCase = new DeleteMedicalCertificateUseCase(medicalCertRepo);
     const medicalCertificateController = new MedicalCertificateController(
         createMedicalCertUseCase,
         getMedicalCertsUseCase,
+        getMedicalCertByIdUseCase,
+        listMemberMedicalCertsUseCase,
+        getMemberMedicalStatusUseCase,
         updateMedicalCertUseCase,
         deleteMedicalCertUseCase,
     );
@@ -327,6 +336,18 @@ export function buildApp() {
     server.get(
         '/api/v1/medical-certificates',
         medicalCertificateController.getAll.bind(medicalCertificateController),
+    );
+    server.get(
+        '/api/v1/medical-certificates/:id',
+        medicalCertificateController.getById.bind(medicalCertificateController),
+    );
+    server.get(
+        '/api/v1/members/:memberId/medical-certificates',
+        medicalCertificateController.getByMember.bind(medicalCertificateController),
+    );
+    server.get(
+        '/api/v1/members/:memberId/medical-certificate-status',
+        medicalCertificateController.getMemberStatus.bind(medicalCertificateController),
     );
     server.patch(
         '/api/v1/medical-certificates/:id',

@@ -1,6 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { CreateMedicalCertificateUseCase } from '../application/CreateMedicalCertificateUseCase.js';
 import { GetMedicalCertificatesUseCase } from '../application/GetMedicalCertificatesUseCase.js';
+import { GetMedicalCertificateByIdUseCase } from '../application/GetMedicalCertificateByIdUseCase.js';
+import { ListMemberMedicalCertificatesUseCase } from '../application/ListMemberMedicalCertificatesUseCase.js';
+import { GetMemberMedicalCertificateStatusUseCase } from '../application/GetMemberMedicalCertificateStatusUseCase.js';
 import { UpdateMedicalCertificateUseCase } from '../application/UpdateMedicalCertificateUseCase.js';
 import { DeleteMedicalCertificateUseCase } from '../application/DeleteMedicalCertificateUseCase.js';
 import { CreateMedicalCertificateRequest, UpdateMedicalCertificateRequest } from '@alentapp/shared';
@@ -9,6 +12,9 @@ export class MedicalCertificateController {
     constructor(
         private readonly createUseCase: CreateMedicalCertificateUseCase,
         private readonly getUseCase: GetMedicalCertificatesUseCase,
+        private readonly getByIdUseCase: GetMedicalCertificateByIdUseCase,
+        private readonly getByMemberUseCase: ListMemberMedicalCertificatesUseCase,
+        private readonly getMemberStatusUseCase: GetMemberMedicalCertificateStatusUseCase,
         private readonly updateUseCase: UpdateMedicalCertificateUseCase,
         private readonly deleteUseCase: DeleteMedicalCertificateUseCase,
     ) {}
@@ -44,6 +50,33 @@ export class MedicalCertificateController {
         try {
             await this.deleteUseCase.execute(request.params.id);
             return reply.status(204).send();
+        } catch (error: any) {
+            return this.handleError(error, reply);
+        }
+    }
+
+    async getById(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        try {
+            const cert = await this.getByIdUseCase.execute(request.params.id);
+            return reply.status(200).send({ data: cert });
+        } catch (error: any) {
+            return this.handleError(error, reply);
+        }
+    }
+
+    async getByMember(request: FastifyRequest<{ Params: { memberId: string } }>, reply: FastifyReply) {
+        try {
+            const certs = await this.getByMemberUseCase.execute(request.params.memberId);
+            return reply.status(200).send({ data: certs });
+        } catch (error: any) {
+            return this.handleError(error, reply);
+        }
+    }
+
+    async getMemberStatus(request: FastifyRequest<{ Params: { memberId: string } }>, reply: FastifyReply) {
+        try {
+            const status = await this.getMemberStatusUseCase.execute(request.params.memberId);
+            return reply.status(200).send({ data: status });
         } catch (error: any) {
             return this.handleError(error, reply);
         }
