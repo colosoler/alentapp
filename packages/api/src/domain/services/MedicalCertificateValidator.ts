@@ -1,9 +1,40 @@
 import { CreateMedicalCertificateRequest } from '@alentapp/shared';
+import { MedicalCertificateStatus, UpdateMedicalCertificateRequest } from '@alentapp/shared';
 
 export class MedicalCertificateValidator {
+    validateCertificateId(id: string): void {
+        if (!this.isValidUuid(id)) {
+            throw new Error('El id del certificado no es valido');
+        }
+    }
+
     validateRequiredFields(data: Partial<CreateMedicalCertificateRequest> | undefined): void {
         if (!data || typeof data.member_id !== 'string' || typeof data.issue_date !== 'string') {
             throw new Error('Faltan campos requeridos');
+        }
+    }
+
+    validateStatus(status: MedicalCertificateStatus): void {
+        if (status !== 'Active' && status !== 'Inactive') {
+            throw new Error('El estado del certificado no es valido');
+        }
+    }
+
+    validateUpdatePayload(data: UpdateMedicalCertificateRequest): void {
+        if (data.issueDate !== undefined && !this.parseValidDate(data.issueDate)) {
+            throw new Error('La fecha de emision no es valida');
+        }
+
+        if (data.expirationDate !== undefined && !this.parseValidDate(data.expirationDate)) {
+            throw new Error('La fecha de vencimiento no es valida');
+        }
+
+        if (data.issueDate !== undefined && data.expirationDate !== undefined) {
+            this.validateExpirationDate(data.issueDate, data.expirationDate);
+        }
+
+        if (data.status !== undefined) {
+            this.validateStatus(data.status);
         }
     }
 
