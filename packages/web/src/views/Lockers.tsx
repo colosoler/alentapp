@@ -17,7 +17,7 @@ import {
   IconButton,
   Menu
 } from '@chakra-ui/react';
-import { LuPlus, LuRefreshCw, LuFilter, LuPenLine, LuTrash2, LuMenu } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuFilter, LuPenLine, LuTrash2, LuMenu, LuWrench } from "react-icons/lu";
 import { 
   DialogRoot,
   DialogContent,
@@ -90,6 +90,38 @@ export function Lockers() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [lockerToDelete, setLockerToDelete] = useState<LockerItemResponse | null>(null);
+
+  const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
+  const [lockerToMaintenance, setLockerToMaintenance] = useState<LockerItemResponse | null>(null);
+  const [isSettingMaintenance, setIsSettingMaintenance] = useState(false);
+
+  const openMaintenanceModal = (locker: LockerItemResponse) => {
+    setLockerToMaintenance(locker);
+    setIsMaintenanceDialogOpen(true);
+  };
+
+  const confirmMaintenance = async () => {
+    if (!lockerToMaintenance) return;
+    setIsSettingMaintenance(true);
+    try {
+        await lockerService.startMaintenance(lockerToMaintenance.id);
+        toaster.create({
+            title: 'Locker en Revisión',
+            description: `El locker #${lockerToMaintenance.number} ha sido enviado a mantenimiento.`,
+            type: 'success',
+        });
+        setIsMaintenanceDialogOpen(false);
+        fetchLockers(statusFilter);
+    } catch (error: any) {
+        toaster.create({
+            title: 'Error de operación',
+            description: error.message,
+            type: 'error',
+        });
+    } finally {
+        setIsSettingMaintenance(false);
+    }
+  };
 
   const openDeleteModal = (locker: LockerItemResponse) => {
     setLockerToDelete(locker);
@@ -468,6 +500,13 @@ export function Lockers() {
                                               <LuPenLine /> Editar Locker
                                           </Menu.Item>
                                           <Menu.Item 
+                                            value="maintenance" 
+                                            onClick={() => openMaintenanceModal(locker)}
+                                            disabled={locker.status !== 'Available'}
+                                        >
+                                            <LuWrench /> Enviar a Mantenimiento
+                                        </Menu.Item>
+                                          <Menu.Item 
                                               value="delete" 
                                               color="red.500" 
                                               onClick={() => openDeleteModal(locker)}
@@ -682,6 +721,34 @@ export function Lockers() {
             </DialogFooter>
             <DialogCloseTrigger />
           </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isMaintenanceDialogOpen} onOpenChange={(e) => setIsMaintenanceDialogOpen(e.open)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Enviar a Mantenimiento</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <Text>
+                        ¿Estás seguro que deseas enviar el Locker <strong>#{lockerToMaintenance?.number}</strong> a mantenimiento?
+                    </Text>
+                    <Text fontSize="sm" color="fg.muted" mt={2}>
+                        Esta acción bloqueará temporalmente su alquiler hasta que vuelva a estar disponible.
+                    </Text>
+                </DialogBody>
+                <DialogFooter>
+                    <DialogActionTrigger asChild>
+                        <Button variant="outline">Cancelar</Button>
+                    </DialogActionTrigger>
+                    <Button 
+                        colorPalette="orange" 
+                        loading={isSettingMaintenance}
+                        onClick={confirmMaintenance}
+                    >
+                        Confirmar
+                    </Button>
+                </DialogFooter>
+                <DialogCloseTrigger />
+            </DialogContent>
         </DialogRoot>
         </Box>
 
