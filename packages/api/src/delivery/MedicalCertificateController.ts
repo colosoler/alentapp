@@ -24,23 +24,41 @@ export class MedicalCertificateController {
             let file_url: string | undefined;
             try {
                 const anyReq: any = request as any;
+                const multipartFields: any = {};
                 if (anyReq.isMultipart && anyReq.isMultipart()) {
-                    const part = await anyReq.file();
-                    if (part) {
-                        const buffer = await part.toBuffer();
-                        const { saveMedicalCertificateFile } = await import('../infrastructure/FileStorage.js');
-                        file_url = await saveMedicalCertificateFile(buffer, part.filename || 'file.png');
+                    for await (const part of anyReq.parts()) {
+                        if (part.file) {
+                            const buffer = await part.toBuffer();
+                            const filename = part.filename || '';
+                            const mimetype = (part.mimetype || '').toLowerCase();
+                            const ext = filename.toLowerCase().endsWith('.pdf');
+                            const isPdf = mimetype === 'application/pdf' || ext;
+                            const maxBytes = 5 * 1024 * 1024;
+                            if (!isPdf) {
+                                throw new Error('El archivo debe ser un PDF');
+                            }
+                            if (buffer.length > maxBytes) {
+                                throw new Error('El archivo no debe superar 5MB');
+                            }
+                            const { saveMedicalCertificateFile } = await import('../infrastructure/FileStorage.js');
+                            file_url = await saveMedicalCertificateFile(buffer, filename || 'file.pdf');
+                        } else {
+                            // field
+                            multipartFields[part.fieldname] = part.value;
+                        }
                     }
                 }
-            } catch (err) {
-                // ignore
+
+                const payloadFromBody: any = { ...(request.body || {}) };
+                const payload: any = { ...payloadFromBody, ...multipartFields };
+                if (file_url) payload.file_url = file_url;
+
+                const cert = await this.createUseCase.execute(payload);
+                return reply.status(201).send({ data: cert });
+            } catch (err: any) {
+                // if validation error, let outer catch handle it
+                throw err;
             }
-
-            const payload: any = { ...(request.body || {}) };
-            if (file_url) payload.file_url = file_url;
-
-            const cert = await this.createUseCase.execute(payload);
-            return reply.status(201).send({ data: cert });
         } catch (error: any) {
             return this.handleError(error, reply);
         }
@@ -60,27 +78,32 @@ export class MedicalCertificateController {
             let file_url: string | undefined;
             try {
                 const anyReq: any = request as any;
+                const multipartFields: any = {};
                 if (anyReq.isMultipart && anyReq.isMultipart()) {
-                    const part = await anyReq.file();
-                    if (part) {
-                        const buffer = await part.toBuffer();
-                        const { saveMedicalCertificateFile, deleteMedicalCertificateFileByUrl } = await import('../infrastructure/FileStorage.js');
-                        const existing = await this.getByIdUseCase.execute(request.params.id);
-                        if (existing && (existing as any).file_url) {
-                            await deleteMedicalCertificateFileByUrl((existing as any).file_url);
+                    for await (const part of anyReq.parts()) {
+                        if (part.file) {
+                            const buffer = await part.toBuffer();
+                            const { saveMedicalCertificateFile, deleteMedicalCertificateFileByUrl } = await import('../infrastructure/FileStorage.js');
+                            const existing = await this.getByIdUseCase.execute(request.params.id);
+                            if (existing && (existing as any).file_url) {
+                                await deleteMedicalCertificateFileByUrl((existing as any).file_url);
+                            }
+                            file_url = await saveMedicalCertificateFile(buffer, part.filename || 'file.png');
+                        } else {
+                            multipartFields[part.fieldname] = part.value;
                         }
-                        file_url = await saveMedicalCertificateFile(buffer, part.filename || 'file.png');
                     }
                 }
-            } catch (err) {
-                // ignore
+
+                const payloadFromBody: any = { ...(request.body || {}) };
+                const payload: any = { ...payloadFromBody, ...multipartFields };
+                if (file_url) payload.file_url = file_url;
+
+                const cert = await this.updateUseCase.execute(request.params.id, payload);
+                return reply.status(200).send({ data: cert });
+            } catch (err: any) {
+                throw err;
             }
-
-            const payload: any = { ...(request.body || {}) };
-            if (file_url) payload.file_url = file_url;
-
-            const cert = await this.updateUseCase.execute(request.params.id, payload);
-            return reply.status(200).send({ data: cert });
         } catch (error: any) {
             return this.handleError(error, reply);
         }

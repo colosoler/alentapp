@@ -25,7 +25,7 @@ Permitir consultar certificados medicos para conocer si un socio tiene un certif
 - El sistema debe permitir consultar todos los certificados de un socio.
 - El sistema debe indicar cual es el certificado activo actual del socio.
 - Si el socio no tiene certificados, debe devolver una lista vacia.
- - Las respuestas de consulta deben incluir `file_url` cuando exista, y debe ser posible descargar/ver el PNG asociado.
+ - Las respuestas de consulta deben incluir `file_url` cuando exista, y debe ser posible descargar/ver el PDF asociado.
 
 ## Diseño Técnico (RFC)
 

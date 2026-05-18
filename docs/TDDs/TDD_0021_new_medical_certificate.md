@@ -30,8 +30,8 @@ La regla principal de negocio indica que solo puede existir un certificado activ
 - El sistema debe invalidar automaticamente los certificados activos anteriores del mismo socio al crear uno nuevo.
 - El sistema debe garantizar que nunca queden dos certificados activos para el mismo socio.
 - Si la creacion es correcta, debe devolver los datos del certificado creado.
- - El sistema debe permitir adjuntar un archivo en formato PNG con el certificado (opcional).
- - El sistema debe validar que el archivo, si se envía, sea imagen PNG y no supere 5MB.
+ - El sistema debe permitir adjuntar un archivo en formato PDF con el certificado (opcional).
+ - El sistema debe validar que el archivo, si se envía, sea PDF y no supere 5MB.
  - Si se adjunta el archivo, la respuesta debe incluir la URL o identificador del recurso almacenado.
 
 ## Diseño Técnico (RFC)
@@ -48,7 +48,7 @@ Se definira la entidad `MedicalCertificate` con las siguientes propiedades y res
 - `createdAt`: Fecha de creacion autogenerada.
 - `updatedAt`: Fecha de actualizacion autogenerada.
 - `invalidatedAt`: Fecha en la que dejo de estar activo, opcional.
- - `file_url`: string opcional con la ruta o URL del archivo PNG almacenado.
+ - `file_url`: string opcional con la ruta o URL del archivo PDF almacenado.
 
 Se recomienda reforzar la regla de unicidad del estado activo por socio a nivel de aplicacion y persistencia.
 
@@ -60,7 +60,7 @@ Se recomienda reforzar la regla de unicidad del estado activo por socio a nivel 
      - `member_id` (string)
      - `issue_date` (ISO date string)
      - `expiration_date` (ISO date string, opcional)
-     - `file` (archivo PNG opcional, campo de tipo file)
+    - `file` (archivo PDF opcional, campo de tipo file)
 
 - Response (`MedicalCertificateResponse`):
 

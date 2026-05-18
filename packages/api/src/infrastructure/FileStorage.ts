@@ -10,7 +10,10 @@ export async function ensureUploadsDir() {
 
 export async function saveMedicalCertificateFile(buffer: Buffer, originalName: string): Promise<string> {
     await ensureUploadsDir();
-    const ext = path.extname(originalName) || '.png';
+    const ext = path.extname(originalName).toLowerCase() || '.pdf';
+    if (ext !== '.pdf') {
+        throw new Error('El archivo debe ser un PDF');
+    }
     const filename = `${randomUUID()}${ext}`;
     const filepath = path.join(uploadsRoot, filename);
     await fs.writeFile(filepath, buffer);
