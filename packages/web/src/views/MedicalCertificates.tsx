@@ -12,7 +12,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LuPencil, LuPlus, LuRefreshCw, LuSearch, LuTrash2 } from "react-icons/lu";
 import { createListCollection, SelectContent, SelectItem, SelectRoot, SelectTrigger, SelectValueText } from "../components/ui/select";
 import {
@@ -99,6 +99,10 @@ export function MedicalCertificatesView() {
   const [editingCertificateId, setEditingCertificateId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formData, setFormData] = useState<CertificateFormState>(emptyFormState);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [memberFilter, setMemberFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -220,6 +224,11 @@ export function MedicalCertificatesView() {
     }
   };
 
+  const handleViewFile = (certificate: MedicalCertificateDTO) => {
+    if (!certificate.file_url) return;
+    window.open(certificate.file_url, '_blank');
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -260,7 +269,16 @@ export function MedicalCertificatesView() {
           status: formData.status,
         };
 
-        await medicalCertificatesService.update(editingCertificateId, updateData);
+        if (selectedFile) {
+          const fd = new FormData();
+          fd.append('file', selectedFile, selectedFile.name);
+          fd.append('issueDate', updateData.issueDate || '');
+          if (updateData.expirationDate) fd.append('expirationDate', updateData.expirationDate);
+          if (updateData.status) fd.append('status', updateData.status);
+          await medicalCertificatesService.update(editingCertificateId, fd);
+        } else {
+          await medicalCertificatesService.update(editingCertificateId, updateData);
+        }
       } else {
         const createData: CreateMedicalCertificateRequest = {
           member_id: formData.member_id,
@@ -268,7 +286,16 @@ export function MedicalCertificatesView() {
           expiration_date: formData.expiration_date || undefined,
         };
 
-        await medicalCertificatesService.create(createData);
+        if (selectedFile) {
+          const fd = new FormData();
+          fd.append('file', selectedFile, selectedFile.name);
+          fd.append('member_id', createData.member_id);
+          fd.append('issue_date', createData.issue_date);
+          if (createData.expiration_date) fd.append('expiration_date', createData.expiration_date);
+          await medicalCertificatesService.create(fd);
+        } else {
+          await medicalCertificatesService.create(createData);
+        }
       }
 
       setIsDialogOpen(false);
@@ -512,6 +539,11 @@ export function MedicalCertificatesView() {
                           <IconButton variant="ghost" size="sm" aria-label="Editar certificado" onClick={() => openEditModal(certificate)}>
                             <LuPencil />
                           </IconButton>
+                          {certificate.file_url && (
+                            <IconButton variant="ghost" size="sm" aria-label="Ver archivo" onClick={() => handleViewFile(certificate)}>
+                              <LuSearch />
+                            </IconButton>
+                          )}
                           <IconButton variant="ghost" size="sm" colorPalette="red" aria-label="Eliminar certificado" onClick={() => handleDelete(certificate)}>
                             <LuTrash2 />
                           </IconButton>
@@ -583,6 +615,74 @@ export function MedicalCertificatesView() {
                       setFormError(null);
                     }}
                   />
+                </Field>
+
+                <Field label="Adjuntar PNG (opcional)">
+                  <input
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    type="file"
+                    accept="image/png"
+                    onChange={(e) => {
+                      setFileError(null);
+                      const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                      if (!file) {
+                        setSelectedFile(null);
+                        setFilePreview(null);
+                        return;
+                      }
+
+                      const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+                      const maxBytes = 5 * 1024 * 1024;
+                      if (!isPng) {
+                        setFileError('El archivo debe ser en formato PNG');
+                        setSelectedFile(null);
+                        setFilePreview(null);
+                        return;
+                      }
+
+                      if (file.size > maxBytes) {
+                        setFileError('El archivo no debe superar 5MB');
+                        setSelectedFile(null);
+                        setFilePreview(null);
+                        return;
+                      }
+
+                      setSelectedFile(file);
+                      const url = URL.createObjectURL(file);
+                      setFilePreview(url);
+                    }}
+                  />
+
+                  <Flex gap="2" align="center">
+                    <Button
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                      size="sm"
+                    >
+                      Seleccionar archivo PNG
+                    </Button>
+                    {selectedFile ? (
+                      <HStack gap="2">
+                        <Text fontSize="sm">{selectedFile.name}</Text>
+                        <Button size="sm" variant="ghost" onClick={() => { setSelectedFile(null); setFilePreview(null); setFileError(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
+                          Quitar
+                        </Button>
+                      </HStack>
+                    ) : (
+                      <Text fontSize="sm" color="fg.muted">Ningún archivo seleccionado</Text>
+                    )}
+                  </Flex>
+
+                  {fileError && (
+                    <Box mt="2" color="red.600" fontSize="sm">{fileError}</Box>
+                  )}
+
+                  {filePreview && (
+                    <Box mt="2">
+                      <Text fontSize="sm">Preview:</Text>
+                      <Box as="img" src={filePreview} maxW="200px" borderRadius="md" mt="1" />
+                    </Box>
+                  )}
                 </Field>
 
                 {editingCertificateId && (
