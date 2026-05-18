@@ -1,34 +1,34 @@
 import {
+  Box,
   Button,
+  Center,
+  Flex,
   Heading,
   HStack,
-  Stack,
-  Text,
-  Box,
+  IconButton,
   Input,
+  Spinner,
+  Stack,
+  Table,
+  Text,
 } from "@chakra-ui/react";
-import { LuPlus, LuRefreshCw } from "react-icons/lu";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { LuPencil, LuPlus, LuRefreshCw, LuSearch, LuTrash2 } from "react-icons/lu";
+import { createListCollection, SelectContent, SelectItem, SelectRoot, SelectTrigger, SelectValueText } from "../components/ui/select";
 import {
-  SelectRoot,
-  SelectTrigger,
-  SelectValueText,
-  SelectContent,
-  SelectItem,
-  createListCollection,
-} from "../components/ui/select";
-import { medicalCertificatesService } from "../services/medicalCertificates";
-import { membersService } from "../services/members";
-import type { MedicalCertificateDTO, CreateMedicalCertificateRequest, MemberDTO } from "@alentapp/shared";
-import {
-  DialogRoot,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  DialogActionTrigger,
   DialogBody,
+  DialogCloseTrigger,
+  DialogContent,
   DialogFooter,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
 } from "../components/ui/dialog";
 import { Field } from "../components/ui/field";
+import { medicalCertificatesService } from "../services/medicalCertificates";
+import { membersService } from "../services/members";
+import type { CreateMedicalCertificateRequest, MedicalCertificateDTO, MemberDTO, MemberMedicalCertificateStatusResponse, UpdateMedicalCertificateRequest } from "@alentapp/shared";
 
 const formatDate = (value?: string) => {
   if (!value) return "-";
@@ -39,22 +39,91 @@ const formatDate = (value?: string) => {
   return `${day}/${month}/${year}`;
 };
 
+const parseValidDate = (value: string): Date | null => {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(value);
+  if (!dateMatch) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = Number(dateMatch[1]);
+  const month = Number(dateMatch[2]);
+  const day = Number(dateMatch[3]);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    calendarDate.getUTCFullYear() !== year ||
+    calendarDate.getUTCMonth() !== month - 1 ||
+    calendarDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+};
+
 const statusLabels: Record<MedicalCertificateDTO["status"], string> = {
   Active: "Activo",
   Inactive: "Inactivo",
 };
 
+const statusCollection = createListCollection({
+  items: [
+    { label: "Todos", value: "" },
+    { label: "Activo", value: "Active" },
+    { label: "Inactivo", value: "Inactive" },
+  ],
+});
+
+type CertificateFormState = {
+  member_id: string;
+  issue_date: string;
+  expiration_date: string;
+  status: MedicalCertificateDTO["status"];
+};
+
+const emptyFormState: CertificateFormState = {
+  member_id: "",
+  issue_date: "",
+  expiration_date: "",
+  status: "Active",
+};
+
 export function MedicalCertificatesView() {
   const [certs, setCerts] = useState<MedicalCertificateDTO[]>([]);
   const [members, setMembers] = useState<MemberDTO[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState<CreateMedicalCertificateRequest>({ member_id: "", issue_date: "" });
-  const [errors, setErrors] = useState<{ member_id?: string; issue_date?: string; expiration_date?: string }>({});
+  const [editingCertificateId, setEditingCertificateId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<CertificateFormState>(emptyFormState);
 
-  const fetch = async () => {
+  const [memberFilter, setMemberFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [searchById, setSearchById] = useState("");
+  const [searchedCertificate, setSearchedCertificate] = useState<MedicalCertificateDTO | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const [memberLookupId, setMemberLookupId] = useState("");
+  const [memberLookupCertificates, setMemberLookupCertificates] = useState<MedicalCertificateDTO[]>([]);
+  const [memberLookupStatus, setMemberLookupStatus] = useState<MemberMedicalCertificateStatusResponse | null>(null);
+
+  const memberCollection = useMemo(() => {
+    return createListCollection({
+      items: members.map((member) => ({
+        label: `${member.name} - ${member.dni}`,
+        value: member.id,
+      })),
+    });
+  }, [members]);
+
+  const loadData = async () => {
     setIsLoading(true);
+    setError(null);
+
     try {
       const [certificates, allMembers] = await Promise.all([
         medicalCertificatesService.getAll(),
@@ -62,180 +131,510 @@ export function MedicalCertificatesView() {
       ]);
       setCerts(certificates);
       setMembers(allMembers);
-    } catch (e) {
-      console.error(e);
+    } catch (err: any) {
+      setError(err.message || "Error al cargar los certificados médicos");
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetch();
-  }, []);
-
-  const openCreate = async () => {
-    setForm({ member_id: "", issue_date: "" });
-    setErrors({});
-    if (members.length === 0) {
-      fetchMembers();
-    }
-    setIsOpen(true);
+  const refreshAndKeepLookups = async () => {
+    await loadData();
   };
 
-  const fetchMembers = async () => {
+  const filteredCertificates = useMemo(() => {
+    return certs.filter((certificate) => {
+      if (memberFilter && certificate.member_id !== memberFilter) {
+        return false;
+      }
+
+      if (statusFilter && certificate.status !== statusFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [certs, memberFilter, statusFilter]);
+
+  const totalActiveCertificates = certs.filter((certificate) => certificate.status === "Active").length;
+  const totalMembersWithActiveCertificate = new Set(
+    certs.filter((certificate) => certificate.status === "Active").map((certificate) => certificate.member_id),
+  ).size;
+
+  const selectedMember = members.find((member) => member.id === memberLookupId) || null;
+
+  const openCreateModal = () => {
+    setEditingCertificateId(null);
+    setFormData(emptyFormState);
+    setFormError(null);
+    setIsDialogOpen(true);
+  };
+
+  const openEditModal = (certificate: MedicalCertificateDTO) => {
+    setEditingCertificateId(certificate.id);
+    setFormData({
+      member_id: certificate.member_id,
+      issue_date: certificate.issue_date.split("T")[0],
+      expiration_date: certificate.expiration_date ? certificate.expiration_date.split("T")[0] : "",
+      status: certificate.status,
+    });
+    setFormError(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleSearchById = async () => {
+    const query = searchById.trim();
+    if (!query) {
+      setSearchError("Ingresá un ID para buscar");
+      setSearchedCertificate(null);
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchError(null);
+
     try {
-      const m = await membersService.getAll();
-      setMembers(m);
-    } catch (e) {
-      console.error(e);
-      setMembers([]);
+      const certificate = await medicalCertificatesService.getById(query);
+      setSearchedCertificate(certificate);
+    } catch (err: any) {
+      setSearchedCertificate(null);
+      setSearchError(err.message || "No se encontró el certificado");
+    } finally {
+      setSearchLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Frontend validations
-    const newErrors: typeof errors = {};
-    if (!form.member_id) newErrors.member_id = 'Faltan campos requeridos';
+  const handleDelete = async (certificate: MedicalCertificateDTO) => {
+    const member = members.find((item) => item.id === certificate.member_id);
+    const memberLabel = member ? `${member.name} - ${member.dni}` : certificate.member_id;
 
-    const parseValidDate = (value: string): Date | null => {
-      const dateMatch = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(value);
-      if (!dateMatch) return null;
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return null;
-      const year = Number(dateMatch[1]);
-      const month = Number(dateMatch[2]);
-      const day = Number(dateMatch[3]);
-      const calendarDate = new Date(Date.UTC(year, month - 1, day));
-      if (
-        calendarDate.getUTCFullYear() !== year ||
-        calendarDate.getUTCMonth() !== month - 1 ||
-        calendarDate.getUTCDate() !== day
-      ) {
-        return null;
-      }
-      return date;
-    };
+    if (!window.confirm(`¿Está seguro de que desea eliminar el certificado de ${memberLabel}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
 
-    const issueDate = parseValidDate(form.issue_date || '');
-    if (!form.issue_date) {
-      newErrors.issue_date = 'Faltan campos requeridos';
+    try {
+      await medicalCertificatesService.delete(certificate.id);
+      await refreshAndKeepLookups();
+    } catch (err: any) {
+      alert(err.message || "Error al eliminar el certificado");
+    }
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const nextErrors: { member_id?: string; issue_date?: string; expiration_date?: string; status?: string } = {};
+
+    const issueDate = parseValidDate(formData.issue_date);
+    const expirationDate = formData.expiration_date ? parseValidDate(formData.expiration_date) : null;
+
+    if (!editingCertificateId && !formData.member_id) {
+      nextErrors.member_id = "Faltan campos requeridos";
+    }
+
+    if (!formData.issue_date) {
+      nextErrors.issue_date = "Faltan campos requeridos";
     } else if (!issueDate) {
-      newErrors.issue_date = 'La fecha de emision no es valida';
+      nextErrors.issue_date = "La fecha de emision no es valida";
     }
 
-    const expVal = form.expiration_date;
-    if (expVal) {
-      const expDate = parseValidDate(expVal);
-      if (!expDate) {
-        newErrors.expiration_date = 'La fecha de vencimiento no es valida';
-      } else if (issueDate && expDate <= issueDate) {
-        newErrors.expiration_date = 'La fecha de vencimiento debe ser posterior a la de emision';
+    if (formData.expiration_date) {
+      if (!expirationDate) {
+        nextErrors.expiration_date = "La fecha de vencimiento no es valida";
+      } else if (issueDate && expirationDate <= issueDate) {
+        nextErrors.expiration_date = "La fecha de vencimiento debe ser posterior a la de emision";
       }
     }
 
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    setFormError(Object.values(nextErrors)[0] || null);
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await medicalCertificatesService.create(form);
-      setIsOpen(false);
-      fetch();
+      if (editingCertificateId) {
+        const updateData: UpdateMedicalCertificateRequest = {
+          issueDate: formData.issue_date,
+          expirationDate: formData.expiration_date || undefined,
+          status: formData.status,
+        };
+
+        await medicalCertificatesService.update(editingCertificateId, updateData);
+      } else {
+        const createData: CreateMedicalCertificateRequest = {
+          member_id: formData.member_id,
+          issue_date: formData.issue_date,
+          expiration_date: formData.expiration_date || undefined,
+        };
+
+        await medicalCertificatesService.create(createData);
+      }
+
+      setIsDialogOpen(false);
+      setEditingCertificateId(null);
+      setFormData(emptyFormState);
+      setFormError(null);
+      await refreshAndKeepLookups();
     } catch (err: any) {
-      alert(err.message || 'Error al crear certificado');
+      setFormError(err.message || (editingCertificateId ? "Error al actualizar el certificado" : "Error al crear el certificado"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    const loadMemberView = async () => {
+      if (!memberLookupId) {
+        setMemberLookupStatus(null);
+        setMemberLookupCertificates([]);
+        return;
+      }
+
+      try {
+        const [status, certificates] = await Promise.all([
+          medicalCertificatesService.getMemberStatus(memberLookupId),
+          medicalCertificatesService.getByMember(memberLookupId),
+        ]);
+        setMemberLookupStatus(status);
+        setMemberLookupCertificates(certificates);
+      } catch (err) {
+        console.error(err);
+        setMemberLookupStatus(null);
+        setMemberLookupCertificates([]);
+      }
+    };
+
+    loadMemberView();
+  }, [memberLookupId]);
+
   return (
-    <DialogRoot open={isOpen} onOpenChange={(e) => setIsOpen(e.open)}>
+    <DialogRoot open={isDialogOpen} onOpenChange={(event) => setIsDialogOpen(event.open)}>
       <Stack gap="8">
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Stack>
-            <Heading size="2xl">Certificados Médicos</Heading>
-            <Text color="fg.muted">Listado de certificados y gestión.</Text>
+        <Flex justify="space-between" align="center" gap="4" wrap="wrap">
+          <Stack gap="1">
+            <Heading size="2xl" fontWeight="bold">Certificados Médicos</Heading>
+            <Text color="fg.muted" fontSize="md">
+              Gestiona altas, actualizaciones, eliminaciones y consultas del historial médico de cada socio.
+            </Text>
           </Stack>
-          <HStack>
-            <Button variant="outline" onClick={fetch} disabled={isLoading}><LuRefreshCw /> Actualizar</Button>
-            <Button colorPalette="blue" onClick={openCreate}><LuPlus /> Nuevo Certificado</Button>
+          <HStack gap="3" wrap="wrap">
+            <Button variant="outline" onClick={loadData} disabled={isLoading}>
+              <LuRefreshCw /> Actualizar
+            </Button>
+            <Button colorPalette="blue" size="md" onClick={openCreateModal}>
+              <LuPlus /> Nuevo Certificado
+            </Button>
           </HStack>
+        </Flex>
+
+        <HStack gap="4" wrap="wrap">
+          <Box flex="1" minW="180px" bg="bg.panel" borderWidth="1px" borderRadius="xl" p="4" boxShadow="sm">
+            <Text color="fg.muted" fontSize="sm">Total certificados</Text>
+            <Heading size="xl">{certs.length}</Heading>
+          </Box>
+          <Box flex="1" minW="180px" bg="bg.panel" borderWidth="1px" borderRadius="xl" p="4" boxShadow="sm">
+            <Text color="fg.muted" fontSize="sm">Activos</Text>
+            <Heading size="xl">{totalActiveCertificates}</Heading>
+          </Box>
+          <Box flex="1" minW="180px" bg="bg.panel" borderWidth="1px" borderRadius="xl" p="4" boxShadow="sm">
+            <Text color="fg.muted" fontSize="sm">Socios con certificado activo</Text>
+            <Heading size="xl">{totalMembersWithActiveCertificate}</Heading>
+          </Box>
+        </HStack>
+
+        <Box bg="bg.panel" borderRadius="xl" boxShadow="sm" borderWidth="1px" p="5">
+          <Stack gap="4">
+            <Heading size="md">Consulta rápida</Heading>
+            <Flex gap="3" wrap="wrap" align="end">
+              <Field label="Buscar por ID de certificado">
+                <Input
+                  value={searchById}
+                  onChange={(event) => setSearchById(event.target.value)}
+                  placeholder="Pegá el ID del certificado"
+                  minW="280px"
+                />
+              </Field>
+              <Button onClick={handleSearchById} loading={searchLoading} colorPalette="blue">
+                <LuSearch /> Buscar
+              </Button>
+            </Flex>
+
+            {searchError && (
+              <Box p="3" bg="red.50" color="red.700" borderRadius="md" borderWidth="1px" borderColor="red.200">
+                <Text fontWeight="bold">No se pudo consultar:</Text>
+                <Text>{searchError}</Text>
+              </Box>
+            )}
+
+            {searchedCertificate ? (
+              <Box p="4" borderRadius="lg" borderWidth="1px" bg="blue.50">
+                <HStack justify="space-between" align="start" wrap="wrap">
+                  <Stack gap="1">
+                    <Text fontSize="sm" color="blue.700" fontWeight="bold">Certificado encontrado</Text>
+                    <Heading size="md">{formatDate(searchedCertificate.issue_date)} - {statusLabels[searchedCertificate.status]}</Heading>
+                    <Text color="blue.700">ID: {searchedCertificate.id}</Text>
+                  </Stack>
+                  <Button size="sm" variant="outline" onClick={() => openEditModal(searchedCertificate)}>
+                    <LuPencil /> Editar
+                  </Button>
+                </HStack>
+              </Box>
+            ) : null}
+
+            <Flex gap="4" wrap="wrap">
+              <Field label="Ver certificados de un socio">
+                <SelectRoot
+                  collection={memberCollection}
+                  value={memberLookupId ? [memberLookupId] : []}
+                  onValueChange={(event) => setMemberLookupId(event.value[0] || "")}
+                >
+                  <SelectTrigger minW="280px">
+                    <SelectValueText placeholder="Seleccioná un socio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {memberCollection.items.map((member) => (
+                      <SelectItem item={member} key={member.value}>
+                        {member.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </SelectRoot>
+              </Field>
+
+              {memberLookupStatus && (
+                <Box flex="1" minW="260px" p="4" bg={memberLookupStatus.hasActiveCertificate ? "green.50" : "orange.50"} borderRadius="lg" borderWidth="1px">
+                  <Text fontSize="sm" color={memberLookupStatus.hasActiveCertificate ? "green.700" : "orange.700"} fontWeight="bold">
+                    Estado del socio
+                  </Text>
+                  <Heading size="sm" mt="1">
+                    {memberLookupStatus.hasActiveCertificate ? "Tiene certificado activo" : "No tiene certificado activo"}
+                  </Heading>
+                  <Text color="fg.muted" mt="1">
+                    {selectedMember ? `${selectedMember.name} - ${selectedMember.dni}` : memberLookupStatus.memberId}
+                  </Text>
+                </Box>
+              )}
+            </Flex>
+
+            {memberLookupCertificates.length > 0 && (
+              <Box>
+                <Text fontWeight="bold" mb="2">Certificados del socio</Text>
+                <Table.Root size="sm" variant="line">
+                  <Table.Header>
+                    <Table.Row bg="bg.muted/50">
+                      <Table.ColumnHeader py="3">ID</Table.ColumnHeader>
+                      <Table.ColumnHeader py="3">Emisión</Table.ColumnHeader>
+                      <Table.ColumnHeader py="3">Vencimiento</Table.ColumnHeader>
+                      <Table.ColumnHeader py="3">Estado</Table.ColumnHeader>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {memberLookupCertificates.map((certificate) => (
+                      <Table.Row key={certificate.id}>
+                        <Table.Cell color="fg.muted">{certificate.id}</Table.Cell>
+                        <Table.Cell color="fg.muted">{formatDate(certificate.issue_date)}</Table.Cell>
+                        <Table.Cell color="fg.muted">{formatDate(certificate.expiration_date)}</Table.Cell>
+                        <Table.Cell>
+                          <Box display="inline-block" px="2" py="0.5" borderRadius="md" bg={certificate.status === "Active" ? "green.50" : "gray.100"} color={certificate.status === "Active" ? "green.700" : "gray.700"} fontSize="xs" fontWeight="bold">
+                            {statusLabels[certificate.status]}
+                          </Box>
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Root>
+              </Box>
+            )}
+          </Stack>
         </Box>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Socio</th>
-              <th>Emisión</th>
-              <th>Vencimiento</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {certs.map((c) => {
-              const member = members.find((m) => m.id === c.member_id);
+        {error && (
+          <Box p="4" bg="red.50" color="red.700" borderRadius="md" borderWidth="1px" borderColor="red.200">
+            <Text fontWeight="bold">Error:</Text>
+            <Text>{error}</Text>
+          </Box>
+        )}
 
-              return (
-                <tr key={c.id}>
-                  <td>{member ? `${member.name} - ${member.dni}` : c.member_id}</td>
-                  <td>{formatDate(c.issue_date)}</td>
-                  <td>{formatDate(c.expiration_date)}</td>
-                  <td>{statusLabels[c.status]}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <Box bg="bg.panel" borderRadius="xl" boxShadow="sm" borderWidth="1px" overflow="hidden" minH="300px" position="relative">
+          {isLoading ? (
+            <Center h="300px">
+              <Stack align="center" gap="4">
+                <Spinner size="xl" color="blue.500" />
+                <Text color="fg.muted">Cargando certificados médicos...</Text>
+              </Stack>
+            </Center>
+          ) : filteredCertificates.length === 0 ? (
+            <Center h="300px">
+              <Stack align="center" gap="4">
+                <Text color="fg.muted">No se encontraron certificados médicos.</Text>
+                <Button variant="ghost" onClick={loadData}>Reintentar</Button>
+              </Stack>
+            </Center>
+          ) : (
+            <Table.Root size="md" variant="line" interactive>
+              <Table.Header>
+                <Table.Row bg="bg.muted/50">
+                  <Table.ColumnHeader py="4">Socio</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4">Emisión</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4">Vencimiento</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4">Estado</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4">Vigencia</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4" textAlign="end">Acciones</Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {filteredCertificates.map((certificate) => {
+                  const member = members.find((item) => item.id === certificate.member_id);
+                  const isActive = certificate.status === "Active";
+
+                  return (
+                    <Table.Row key={certificate.id} _hover={{ bg: "bg.muted/30" }} bg={isActive ? "green.50" : undefined}>
+                      <Table.Cell fontWeight="semibold" color="fg.emphasized">
+                        {member ? `${member.name} - ${member.dni}` : certificate.member_id}
+                      </Table.Cell>
+                      <Table.Cell color="fg.muted">{formatDate(certificate.issue_date)}</Table.Cell>
+                      <Table.Cell color="fg.muted">{formatDate(certificate.expiration_date)}</Table.Cell>
+                      <Table.Cell>
+                        <Box display="inline-block" px="2" py="0.5" borderRadius="md" bg={isActive ? "green.50" : "gray.100"} color={isActive ? "green.700" : "gray.700"} fontSize="xs" fontWeight="bold">
+                          {statusLabels[certificate.status]}
+                        </Box>
+                      </Table.Cell>
+                      <Table.Cell color={isActive ? "green.700" : "fg.muted"} fontWeight={isActive ? "bold" : undefined}>
+                        {isActive ? "Certificado vigente" : "Histórico"}
+                      </Table.Cell>
+                      <Table.Cell textAlign="end">
+                        <HStack gap="2" justify="flex-end">
+                          <IconButton variant="ghost" size="sm" aria-label="Editar certificado" onClick={() => openEditModal(certificate)}>
+                            <LuPencil />
+                          </IconButton>
+                          <IconButton variant="ghost" size="sm" colorPalette="red" aria-label="Eliminar certificado" onClick={() => handleDelete(certificate)}>
+                            <LuTrash2 />
+                          </IconButton>
+                        </HStack>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
+              </Table.Body>
+            </Table.Root>
+          )}
+        </Box>
 
         <DialogContent>
           <form onSubmit={handleSubmit} noValidate>
             <DialogHeader>
-              <DialogTitle>Nuevo Certificado Médico</DialogTitle>
+              <DialogTitle>{editingCertificateId ? "Editar Certificado Médico" : "Nuevo Certificado Médico"}</DialogTitle>
             </DialogHeader>
             <DialogBody>
               <Stack gap="4">
-                <Field label="Socio" required errorText={errors.member_id}>
-                  <SelectRoot
-                    collection={createListCollection({ items: members.map((m) => ({ label: m.name, value: m.id })) })}
-                    value={[form.member_id]}
-                    onValueChange={(e) => {
-                      setForm({ ...form, member_id: e.value[0] || '' });
-                      setErrors(prev => ({ ...prev, member_id: undefined }));
+                {editingCertificateId ? (
+                  <Box p="3" borderWidth="1px" borderRadius="md" bg="bg.subtle">
+                    <Text fontSize="sm" color="fg.muted">Socio</Text>
+                    <Text fontWeight="semibold">
+                      {members.find((member) => member.id === formData.member_id)?.name || formData.member_id}
+                    </Text>
+                  </Box>
+                ) : (
+                  <Field label="Socio" required errorText={formError || undefined}>
+                    <SelectRoot
+                      collection={memberCollection}
+                      value={formData.member_id ? [formData.member_id] : []}
+                      onValueChange={(event) => {
+                        setFormData({ ...formData, member_id: event.value[0] || "" });
+                        setFormError(null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValueText placeholder="Seleccione un socio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {memberCollection.items.map((member) => (
+                          <SelectItem item={member} key={member.value}>
+                            {member.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </SelectRoot>
+                  </Field>
+                )}
+
+                <Field label="Fecha de emisión" required>
+                  <Input
+                    type="date"
+                    value={formData.issue_date}
+                    onChange={(event) => {
+                      setFormData({ ...formData, issue_date: event.target.value });
+                      setFormError(null);
                     }}
-                  >
-                    <SelectTrigger>
-                      <SelectValueText placeholder="Seleccione un socio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {members.map((m) => (
-                        <SelectItem item={{ label: m.name, value: m.id }} key={m.id}>{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </SelectRoot>
+                  />
                 </Field>
-                  {errors.member_id && (
-                    <Box color="red.600" fontSize="sm">{errors.member_id}</Box>
-                  )}
 
-                <Field label="Fecha de emisión" required errorText={errors.issue_date}>
-                  <Input type="date" value={form.issue_date} onChange={(e) => { setForm({ ...form, issue_date: e.target.value }); setErrors(prev => ({ ...prev, issue_date: undefined })); }} />
+                <Field label="Fecha de vencimiento (opcional)">
+                  <Input
+                    type="date"
+                    value={formData.expiration_date}
+                    onChange={(event) => {
+                      setFormData({ ...formData, expiration_date: event.target.value });
+                      setFormError(null);
+                    }}
+                  />
                 </Field>
-                  {errors.issue_date && (
-                    <Box color="red.600" fontSize="sm">{errors.issue_date}</Box>
-                  )}
 
-                <Field label="Fecha de vencimiento (opcional)" errorText={errors.expiration_date}>
-                  <Input type="date" value={form.expiration_date || ''} onChange={(e) => { setForm({ ...form, expiration_date: e.target.value }); setErrors(prev => ({ ...prev, expiration_date: undefined })); }} />
-                </Field>
-                  {errors.expiration_date && (
-                    <Box color="red.600" fontSize="sm">{errors.expiration_date}</Box>
-                  )}
+                {editingCertificateId && (
+                  <Field label="Estado">
+                    <SelectRoot
+                      collection={createListCollection({
+                        items: [
+                          { label: "Activo", value: "Active" },
+                          { label: "Inactivo", value: "Inactive" },
+                        ],
+                      })}
+                      value={[formData.status]}
+                      onValueChange={(event) => {
+                        setFormData({ ...formData, status: (event.value[0] as MedicalCertificateDTO["status"]) || "Active" });
+                        setFormError(null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValueText placeholder="Seleccione un estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem item={{ label: "Activo", value: "Active" }} key="active">
+                          Activo
+                        </SelectItem>
+                        <SelectItem item={{ label: "Inactivo", value: "Inactive" }} key="inactive">
+                          Inactivo
+                        </SelectItem>
+                      </SelectContent>
+                    </SelectRoot>
+                  </Field>
+                )}
+
+                {!editingCertificateId && (
+                  <Box p="3" borderRadius="md" bg="blue.50" color="blue.700" borderWidth="1px" borderColor="blue.200">
+                    Al crear un certificado nuevo, los certificados activos anteriores del mismo socio se invalidan automáticamente.
+                  </Box>
+                )}
+
+                {formError && (
+                  <Box color="red.600" fontSize="sm">{formError}</Box>
+                )}
               </Stack>
             </DialogBody>
             <DialogFooter>
-              <Button type="submit" colorPalette="blue" loading={isSubmitting}>Crear</Button>
+              <DialogActionTrigger asChild>
+                <Button variant="outline">Cancelar</Button>
+              </DialogActionTrigger>
+              <Button type="submit" colorPalette="blue" loading={isSubmitting}>
+                {editingCertificateId ? "Guardar Cambios" : "Crear Certificado"}
+              </Button>
             </DialogFooter>
+            <DialogCloseTrigger />
           </form>
         </DialogContent>
       </Stack>
