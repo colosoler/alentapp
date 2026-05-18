@@ -11,4 +11,5 @@ export interface LockerRepository {
     updateRelease(id: string): Promise<LockerResponse>;
     update(id: string, data: UpdateLockerRequest): Promise<LockerResponse>;
     findByNumber(number: number): Promise<LockerResponse | null>;
+    delete(id: string): Promise<void>;
 }
