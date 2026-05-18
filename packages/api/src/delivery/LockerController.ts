@@ -7,6 +7,7 @@ import { RentLockerUseCase } from "../application/RentLockerUseCase.js";
 import { ReleaseLockerUseCase } from "../application/ReleaseLockerUseCase.js";
 import { UpdateLockerUseCase } from "../application/UpdateLockerUseCase.js";
 import { DeleteLockerUseCase } from "../application/DeleteLockerUseCase.js";
+import { StartLockerMaintenanceUseCase } from "../application/StartLockerMaintenanceUseCase.js";
 
 export class LockerController {
     constructor(
@@ -16,6 +17,7 @@ export class LockerController {
         private readonly releaseLockerUseCase: ReleaseLockerUseCase,
         private readonly updateLockerUseCase: UpdateLockerUseCase,
         private readonly deleteLockerUseCase: DeleteLockerUseCase,
+        private readonly startLockerMaintenanceUseCase: StartLockerMaintenanceUseCase
     ) {}
 
     async create(req: FastifyRequest<{Body: CreateLockerRequest}>, response: FastifyReply) {
@@ -119,6 +121,23 @@ export class LockerController {
                 return response.status(400).send({ error: error.message });
             }
             return response.status(500).send({ error: 'Internal Server Error' });
+        }
+    }
+
+    async startMaintenance(req: FastifyRequest<{Params: {id: string}}>, response: FastifyReply) {
+        try {
+            const locker = await this.startLockerMaintenanceUseCase.execute(req.params.id);
+            return response.status(200).send(locker);
+        } catch (error: any) {
+            if (error instanceof NotFoundError) {
+                return response.status(404).send({ error: error.message });
+            }
+            if (error instanceof BadRequestError) {
+                return response.status(400).send({ error: error.message });
+            }
+
+            console.error(error);
+            return response.status(500).send({ error: 'Error interno del servidor' });
         }
     }
 
