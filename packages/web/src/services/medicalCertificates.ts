@@ -18,12 +18,14 @@ const fetchAllCertificates = async (): Promise<MedicalCertificateDTO[]> => {
 };
 
 export const medicalCertificatesService = {
-  async create(data: CreateMedicalCertificateRequest): Promise<MedicalCertificateDTO> {
-    const response = await fetch(`${API_URL}/medical-certificates`, {
+  async create(data: any): Promise<MedicalCertificateDTO> {
+    const opts: RequestInit = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+      body: data instanceof FormData ? data : JSON.stringify(data),
+      headers: data instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
+    };
+
+    const response = await fetch(`${API_URL}/medical-certificates`, opts);
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.error || 'Error al crear el certificado medico');
@@ -32,12 +34,14 @@ export const medicalCertificatesService = {
     return result.data;
   },
 
-  async update(id: string, data: UpdateMedicalCertificateRequest): Promise<MedicalCertificateDTO> {
-    const response = await fetch(`${API_URL}/medical-certificates/${id}`, {
+  async update(id: string, data: any): Promise<MedicalCertificateDTO> {
+    const opts: RequestInit = {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+      body: data instanceof FormData ? data : JSON.stringify(data),
+      headers: data instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
+    };
+
+    const response = await fetch(`${API_URL}/medical-certificates/${id}`, opts);
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.error || 'Error al actualizar el certificado medico');

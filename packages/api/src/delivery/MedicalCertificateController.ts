@@ -21,7 +21,26 @@ export class MedicalCertificateController {
 
     async create(request: FastifyRequest<{ Body: CreateMedicalCertificateRequest }>, reply: FastifyReply) {
         try {
-            const cert = await this.createUseCase.execute(request.body);
+            let file_url: string | undefined;
+            // handle multipart file if present
+            try {
+                const anyReq: any = request as any;
+                if (anyReq.isMultipart && anyReq.isMultipart()) {
+                    const part = await anyReq.file();
+                    if (part) {
+                        const buffer = await part.toBuffer();
+                        const { saveMedicalCertificateFile } = await import('../infrastructure/FileStorage.js');
+                        file_url = await saveMedicalCertificateFile(buffer, part.filename || 'file.png');
+                    }
+                }
+            } catch (err) {
+                // ignore if multipart plugin not available
+            }
+
+            const payload: any = { ...(request.body || {}) };
+            if (file_url) payload.file_url = file_url;
+
+            const cert = await this.createUseCase.execute(payload);
             return reply.status(201).send({ data: cert });
         } catch (error: any) {
             return this.handleError(error, reply);
@@ -39,7 +58,30 @@ export class MedicalCertificateController {
 
     async update(request: FastifyRequest<{ Params: { id: string }; Body: UpdateMedicalCertificateRequest }>, reply: FastifyReply) {
         try {
-            const cert = await this.updateUseCase.execute(request.params.id, request.body);
+            let file_url: string | undefined;
+            try {
+                const anyReq: any = request as any;
+                if (anyReq.isMultipart && anyReq.isMultipart()) {
+                    const part = await anyReq.file();
+                    if (part) {
+                        const buffer = await part.toBuffer();
+                        const { saveMedicalCertificateFile, deleteMedicalCertificateFileByUrl } = await import('../infrastructure/FileStorage.js');
+                        // delete existing file if any
+                        const existing = await this.getByIdUseCase.execute(request.params.id);
+                        if (existing && (existing as any).file_url) {
+                            await deleteMedicalCertificateFileByUrl((existing as any).file_url);
+                        }
+                        file_url = await saveMedicalCertificateFile(buffer, part.filename || 'file.png');
+                    }
+                }
+            } catch (err) {
+                // ignore
+            }
+
+            const payload: any = { ...(request.body || {}) };
+            if (file_url) payload.file_url = file_url;
+
+            const cert = await this.updateUseCase.execute(request.params.id, payload);
             return reply.status(200).send({ data: cert });
         } catch (error: any) {
             return this.handleError(error, reply);

@@ -112,6 +112,7 @@ export interface MedicalCertificateDTO {
   member_id: string;
   issue_date: string; // ISO Date String
   expiration_date?: string; // ISO Date String
+  file_url?: string;
   status: MedicalCertificateStatus;
   created_at: string;
   updated_at: string;
@@ -122,12 +123,14 @@ export interface CreateMedicalCertificateRequest {
   member_id: string;
   issue_date: string; // ISO Date String
   expiration_date?: string; // ISO Date String
+  file_url?: string;
 }
 
 export interface UpdateMedicalCertificateRequest {
   issueDate?: string; // ISO Date String
   expirationDate?: string; // ISO Date String
   status?: MedicalCertificateStatus;
+  fileUrl?: string;
 }
 
 export interface MemberMedicalCertificateStatusResponse {
