@@ -6,7 +6,6 @@ import {
   Text,
   Box,
   Input,
-  
 } from "@chakra-ui/react";
 import { LuPlus, LuRefreshCw } from "react-icons/lu";
 import { useEffect, useState } from "react";
@@ -31,6 +30,20 @@ import {
 } from "../components/ui/dialog";
 import { Field } from "../components/ui/field";
 
+const formatDate = (value?: string) => {
+  if (!value) return "-";
+
+  const [year, month, day] = value.split("T")[0].split("-");
+  if (!year || !month || !day) return value;
+
+  return `${day}/${month}/${year}`;
+};
+
+const statusLabels: Record<MedicalCertificateDTO["status"], string> = {
+  Active: "Activo",
+  Inactive: "Inactivo",
+};
+
 export function MedicalCertificatesView() {
   const [certs, setCerts] = useState<MedicalCertificateDTO[]>([]);
   const [members, setMembers] = useState<MemberDTO[]>([]);
@@ -43,8 +56,12 @@ export function MedicalCertificatesView() {
   const fetch = async () => {
     setIsLoading(true);
     try {
-      const data = await medicalCertificatesService.getAll();
-      setCerts(data);
+      const [certificates, allMembers] = await Promise.all([
+        medicalCertificatesService.getAll(),
+        membersService.getAll(),
+      ]);
+      setCerts(certificates);
+      setMembers(allMembers);
     } catch (e) {
       console.error(e);
     } finally {
@@ -59,14 +76,16 @@ export function MedicalCertificatesView() {
   const openCreate = async () => {
     setForm({ member_id: "", issue_date: "" });
     setErrors({});
-    fetchMembers();
+    if (members.length === 0) {
+      fetchMembers();
+    }
     setIsOpen(true);
   };
 
   const fetchMembers = async () => {
     try {
       const m = await membersService.getAll();
-      setMembers(m.filter((x) => x.category !== 'Cadete'));
+      setMembers(m);
     } catch (e) {
       console.error(e);
       setMembers([]);
@@ -105,7 +124,7 @@ export function MedicalCertificatesView() {
       newErrors.issue_date = 'La fecha de emision no es valida';
     }
 
-    const expVal = (form as any).expiration_date;
+    const expVal = form.expiration_date;
     if (expVal) {
       const expDate = parseValidDate(expVal);
       if (!expDate) {
@@ -120,7 +139,7 @@ export function MedicalCertificatesView() {
 
     setIsSubmitting(true);
     try {
-      await medicalCertificatesService.create(form as any);
+      await medicalCertificatesService.create(form);
       setIsOpen(false);
       fetch();
     } catch (err: any) {
@@ -154,14 +173,18 @@ export function MedicalCertificatesView() {
             </tr>
           </thead>
           <tbody>
-            {certs.map((c) => (
-              <tr key={c.id}>
-                <td>{c.member_id}</td>
-                <td>{c.issue_date}</td>
-                <td>{c.expiration_date || '-'}</td>
-                <td>{c.status}</td>
-              </tr>
-            ))}
+            {certs.map((c) => {
+              const member = members.find((m) => m.id === c.member_id);
+
+              return (
+                <tr key={c.id}>
+                  <td>{member ? `${member.name} - ${member.dni}` : c.member_id}</td>
+                  <td>{formatDate(c.issue_date)}</td>
+                  <td>{formatDate(c.expiration_date)}</td>
+                  <td>{statusLabels[c.status]}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -203,7 +226,7 @@ export function MedicalCertificatesView() {
                   )}
 
                 <Field label="Fecha de vencimiento (opcional)" errorText={errors.expiration_date}>
-                  <Input type="date" value={(form as any).expiration_date || ''} onChange={(e) => { setForm({ ...(form as any), expiration_date: e.target.value }); setErrors(prev => ({ ...prev, expiration_date: undefined })); }} />
+                  <Input type="date" value={form.expiration_date || ''} onChange={(e) => { setForm({ ...form, expiration_date: e.target.value }); setErrors(prev => ({ ...prev, expiration_date: undefined })); }} />
                 </Field>
                   {errors.expiration_date && (
                     <Box color="red.600" fontSize="sm">{errors.expiration_date}</Box>
