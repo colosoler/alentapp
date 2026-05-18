@@ -8,4 +8,5 @@ export interface LockerRepository {
     findAll(status?: LockerStatus): Promise<LockerItemResponse[]>;
     findById(id: string): Promise<LockerResponse | null>;
     updateRent(id: string, memberId: string): Promise<LockerResponse>;
+    updateRelease(id: string): Promise<LockerResponse>;
 }

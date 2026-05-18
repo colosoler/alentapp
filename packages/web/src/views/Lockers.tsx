@@ -75,6 +75,39 @@ export function Lockers() {
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [isRenting, setIsRenting] = useState(false);
 
+  const [releasingLockerId, setReleasingLockerId] = useState<string | null>(null);
+  const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
+  const [lockerToRelease, setLockerToRelease] = useState<LockerItemResponse | null>(null);
+
+  const openReleaseModal = (locker: LockerItemResponse) => {
+    setLockerToRelease(locker);
+    setIsReleaseDialogOpen(true);
+  };
+
+  const confirmRelease = async () => {
+    if (!lockerToRelease) return;
+    
+    setReleasingLockerId(lockerToRelease.id);
+    try {
+        await lockerService.release(lockerToRelease.id);
+        toaster.create({
+            title: 'Locker Liberado',
+            description: `El locker #${lockerToRelease.number} vuelve a estar disponible.`,
+            type: 'success',
+        });
+        setIsReleaseDialogOpen(false); // Cerramos el modal tras el éxito
+        fetchLockers(statusFilter);
+    } catch (error: any) {
+        toaster.create({
+            title: 'No se pudo liberar',
+            description: error.message,
+            type: 'error',
+        });
+    } finally {
+        setReleasingLockerId(null);
+    }
+  };
+
   // Filtrado reactivo de miembros (Por Nombre o DNI)
   const filteredMembers = members.filter(m => 
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -376,15 +409,15 @@ export function Lockers() {
                             >
                                 Alquilar
                             </Button>
-                                <Button 
-                                    size="sm" 
-                                    colorPalette="red" 
-                                    variant="outline"
-                                    disabled={locker.status !== 'Occupied'}
-                                    onClick={() => alert('Próximamente: TDD 0034 (Liberar)')}
-                                >
-                                    Liberar
-                                </Button>
+                            <Button 
+                                size="sm"   
+                                colorPalette="red" 
+                                variant="outline"
+                                disabled={locker.status !== 'Occupied'}
+                                onClick={() => openReleaseModal(locker)}
+                            >
+                                Liberar
+                            </Button>
                             </Flex>
                         </Card.Footer>
                     </Card.Root>
@@ -448,6 +481,34 @@ export function Lockers() {
                 </DialogFooter>
                 <DialogCloseTrigger />
             </DialogContent>
+        </DialogRoot>
+        <DialogRoot open={isReleaseDialogOpen} onOpenChange={(e) => setIsReleaseDialogOpen(e.open)}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Confirmar Liberación</DialogTitle>
+              </DialogHeader>
+              <DialogBody>
+                  <Text>
+                      ¿Estás seguro que deseas desvincular al socio y liberar el Locker <strong>#{lockerToRelease?.number}</strong>?
+                  </Text>
+                  <Text fontSize="sm" color="fg.muted" mt={2}>
+                      Esta acción cambiará el estado a "Disponible" y no se puede deshacer.
+                  </Text>
+              </DialogBody>
+              <DialogFooter>
+                  <DialogActionTrigger asChild>
+                      <Button variant="outline">Cancelar</Button>
+                  </DialogActionTrigger>
+                  <Button 
+                      colorPalette="red" 
+                      loading={releasingLockerId === lockerToRelease?.id}
+                      onClick={confirmRelease}
+                  >
+                      Confirmar y Liberar
+                  </Button>
+              </DialogFooter>
+              <DialogCloseTrigger />
+          </DialogContent>
         </DialogRoot>
         </Box>
 

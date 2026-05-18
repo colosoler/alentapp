@@ -98,4 +98,15 @@ export class PostgresLockerRepository implements LockerRepository {
             throw error;
         }
     }
+
+    async updateRelease(id: string): Promise<LockerResponse> {
+        const updatedLocker = await prisma.locker.update({
+            where: { id },
+            data: { 
+                status: 'Available', 
+                member_id: null
+            }
+        });
+        return this.mapToDTO(updatedLocker);
+    }
 }
