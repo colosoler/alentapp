@@ -1,14 +1,16 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { CreateMedicalCertificateUseCase } from '../application/CreateMedicalCertificateUseCase.js';
 import { GetMedicalCertificatesUseCase } from '../application/GetMedicalCertificatesUseCase.js';
-import { CreateMedicalCertificateRequest, UpdateMedicalCertificateRequest } from '@alentapp/shared';
 import { UpdateMedicalCertificateUseCase } from '../application/UpdateMedicalCertificateUseCase.js';
+import { DeleteMedicalCertificateUseCase } from '../application/DeleteMedicalCertificateUseCase.js';
+import { CreateMedicalCertificateRequest, UpdateMedicalCertificateRequest } from '@alentapp/shared';
 
 export class MedicalCertificateController {
     constructor(
         private readonly createUseCase: CreateMedicalCertificateUseCase,
         private readonly getUseCase: GetMedicalCertificatesUseCase,
         private readonly updateUseCase: UpdateMedicalCertificateUseCase,
+        private readonly deleteUseCase: DeleteMedicalCertificateUseCase,
     ) {}
 
     async create(request: FastifyRequest<{ Body: CreateMedicalCertificateRequest }>, reply: FastifyReply) {
@@ -33,6 +35,15 @@ export class MedicalCertificateController {
         try {
             const cert = await this.updateUseCase.execute(request.params.id, request.body);
             return reply.status(200).send({ data: cert });
+        } catch (error: any) {
+            return this.handleError(error, reply);
+        }
+    }
+
+    async delete(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        try {
+            await this.deleteUseCase.execute(request.params.id);
+            return reply.status(204).send();
         } catch (error: any) {
             return this.handleError(error, reply);
         }

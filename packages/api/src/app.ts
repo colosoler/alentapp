@@ -28,6 +28,7 @@ import { MedicalCertificateValidator } from './domain/services/MedicalCertificat
 import { CreateMedicalCertificateUseCase } from './application/CreateMedicalCertificateUseCase.js';
 import { GetMedicalCertificatesUseCase } from './application/GetMedicalCertificatesUseCase.js';
 import { UpdateMedicalCertificateUseCase } from './application/UpdateMedicalCertificateUseCase.js';
+import { DeleteMedicalCertificateUseCase } from './application/DeleteMedicalCertificateUseCase.js';
 import { MedicalCertificateController } from './delivery/MedicalCertificateController.js';
 import { PostgresLockerRepository } from './infrastructure/PostgresLockerRepository.js';
 import { LockerValidator } from './domain/services/LockerValidator.js';
@@ -180,10 +181,12 @@ export function buildApp() {
     const createMedicalCertUseCase = new CreateMedicalCertificateUseCase(medicalCertRepo, memberRepo, medicalCertValidator);
     const getMedicalCertsUseCase = new GetMedicalCertificatesUseCase(medicalCertRepo);
     const updateMedicalCertUseCase = new UpdateMedicalCertificateUseCase(medicalCertRepo, medicalCertValidator);
+    const deleteMedicalCertUseCase = new DeleteMedicalCertificateUseCase(medicalCertRepo);
     const medicalCertificateController = new MedicalCertificateController(
         createMedicalCertUseCase,
         getMedicalCertsUseCase,
         updateMedicalCertUseCase,
+        deleteMedicalCertUseCase,
     );
     const loanController = new LoanController(
         createLoanUseCase,
@@ -328,6 +331,10 @@ export function buildApp() {
     server.patch(
         '/api/v1/medical-certificates/:id',
         medicalCertificateController.update.bind(medicalCertificateController),
+    );
+    server.delete(
+        '/api/v1/medical-certificates/:id',
+        medicalCertificateController.delete.bind(medicalCertificateController),
     );
     // rutas de locker
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
