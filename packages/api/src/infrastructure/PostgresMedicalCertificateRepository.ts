@@ -1,7 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/client/client.js';
 import { MedicalCertificateRepository } from '../domain/MedicalCertificateRepository.js';
-import { CreateMedicalCertificateRequest, MedicalCertificateDTO, MedicalCertificateStatus } from '@alentapp/shared';
+import { CreateMedicalCertificateRequest, MedicalCertificateDTO, MedicalCertificateStatus, UpdateMedicalCertificateRequest } from '@alentapp/shared';
 
 if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL environment variable is not set');
@@ -36,6 +36,14 @@ export class PostgresMedicalCertificateRepository implements MedicalCertificateR
         return this.mapToDTO(cert as DBMedicalCertificate);
     }
 
+    async findById(id: string): Promise<MedicalCertificateDTO | null> {
+        const cert = await prisma.medicalCertificate.findUnique({
+            where: { id },
+        });
+
+        return cert ? this.mapToDTO(cert as DBMedicalCertificate) : null;
+    }
+
     async invalidateActiveByMember(memberId: string): Promise<void> {
         await prisma.medicalCertificate.updateMany({
             where: { member_id: memberId, status: 'Active' },
@@ -58,6 +66,31 @@ export class PostgresMedicalCertificateRepository implements MedicalCertificateR
         });
 
         return certs.map((c) => this.mapToDTO(c as DBMedicalCertificate));
+    }
+
+    async update(id: string, data: UpdateMedicalCertificateRequest): Promise<MedicalCertificateDTO> {
+        const updateData: any = {
+            updated_at: new Date(),
+        };
+
+        if (data.issueDate !== undefined) {
+            updateData.issue_date = new Date(data.issueDate);
+        }
+
+        if (data.expirationDate !== undefined) {
+            updateData.expiration_date = new Date(data.expirationDate);
+        }
+
+        if (data.status !== undefined) {
+            updateData.status = data.status;
+        }
+
+        const cert = await prisma.medicalCertificate.update({
+            where: { id },
+            data: updateData,
+        });
+
+        return this.mapToDTO(cert as DBMedicalCertificate);
     }
 
     private mapToDTO(cert: DBMedicalCertificate): MedicalCertificateDTO {
