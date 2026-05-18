@@ -25,6 +25,8 @@ Permitir eliminar un certificado medico cargado por error o invalidado definitiv
 - El sistema debe validar que el certificado exista antes de intentar eliminarlo.
 - El sistema debe realizar un borrado fisico de la base de datos.
 - Si el borrado es exitoso, debe responder `204 No Content`.
+ - Al eliminar, si el certificado tiene un archivo asociado, este debe eliminarse del almacenamiento permanente.
+ - El mensaje de confirmación debe advertir que la eliminación del registro y del archivo es irreversible.
 
 ## Diseño Técnico (RFC)
 
