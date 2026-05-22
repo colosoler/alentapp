@@ -79,7 +79,13 @@ vi.mock('../infrastructure/PostgresDisciplineRepository.js', () => {
             }
 
             async update(id: string, data: any) {
-                return { id, ...data };
+                const index = createdDisciplines.findIndex((discipline) => discipline.id === id);
+                const updatedDiscipline = {
+                    ...createdDisciplines[index],
+                    ...data,
+                };
+                createdDisciplines[index] = updatedDiscipline;
+                return updatedDiscipline;
             }
 
             async delete() {
@@ -98,6 +104,15 @@ describe('Discipline API Integration Tests', () => {
         endDate: '2026-05-15',
         isTotalSuspension: true,
         memberId: 'member-1',
+    };
+
+    const existingDisciplineId = '11111111-1111-4111-8111-111111111111';
+
+    const seedExistingDiscipline = () => {
+        createdDisciplines.push({
+            id: existingDisciplineId,
+            ...validPayload,
+        });
     };
 
     beforeAll(async () => {
@@ -175,6 +190,83 @@ describe('Discipline API Integration Tests', () => {
             expect(response.statusCode).toBe(404);
             const body = JSON.parse(response.payload);
             expect(body.error).toBe('El socio especificado no existe');
+            expect(createdDisciplines).toHaveLength(0);
+        });
+    });
+
+    describe('PUT /api/v1/disciplines/:id', () => {
+        it('debe retornar 200 y actualizar la sancion atravesando ruta, controller, use case y validator', async () => {
+            seedExistingDiscipline();
+
+            const response = await app.inject({
+                method: 'PUT',
+                url: `/api/v1/disciplines/${existingDisciplineId}`,
+                payload: {
+                    reason: 'Reincidencia disciplinaria',
+                    isTotalSuspension: false,
+                },
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toEqual({
+                id: existingDisciplineId,
+                ...validPayload,
+                reason: 'Reincidencia disciplinaria',
+                isTotalSuspension: false,
+            });
+            expect(createdDisciplines[0].reason).toBe('Reincidencia disciplinaria');
+            expect(createdDisciplines[0].isTotalSuspension).toBe(false);
+        });
+
+        it('debe retornar 400 si el id informado no es valido', async () => {
+            seedExistingDiscipline();
+
+            const response = await app.inject({
+                method: 'PUT',
+                url: '/api/v1/disciplines/discipline-1',
+                payload: {
+                    reason: 'Reincidencia disciplinaria',
+                },
+            });
+
+            expect(response.statusCode).toBe(400);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El id de la sancion no es valido');
+            expect(createdDisciplines[0].reason).toBe(validPayload.reason);
+        });
+
+        it('debe retornar 400 si las fechas actualizadas son invalidas', async () => {
+            seedExistingDiscipline();
+
+            const response = await app.inject({
+                method: 'PUT',
+                url: `/api/v1/disciplines/${existingDisciplineId}`,
+                payload: {
+                    startDate: '2026-05-20',
+                    endDate: '2026-05-10',
+                },
+            });
+
+            expect(response.statusCode).toBe(400);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('La fecha de fin debe ser posterior a la de inicio');
+            expect(createdDisciplines[0].startDate).toBe(validPayload.startDate);
+            expect(createdDisciplines[0].endDate).toBe(validPayload.endDate);
+        });
+
+        it('debe retornar 404 si la sancion a actualizar no existe', async () => {
+            const response = await app.inject({
+                method: 'PUT',
+                url: `/api/v1/disciplines/${existingDisciplineId}`,
+                payload: {
+                    reason: 'Reincidencia disciplinaria',
+                },
+            });
+
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('La sancion no existe');
             expect(createdDisciplines).toHaveLength(0);
         });
     });
