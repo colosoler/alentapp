@@ -74,8 +74,20 @@ vi.mock('../infrastructure/PostgresDisciplineRepository.js', () => {
                 return createdDisciplines.filter((discipline) => discipline.memberId === memberId);
             }
 
-            async findActiveTotalSuspensionByMemberId() {
-                return null;
+            async findActiveTotalSuspensionByMemberId(memberId: string, at: Date) {
+                return (
+                    createdDisciplines.find((discipline) => {
+                        const start = new Date(discipline.startDate);
+                        const end = new Date(discipline.endDate);
+
+                        return (
+                            discipline.memberId === memberId &&
+                            discipline.isTotalSuspension &&
+                            start <= at &&
+                            end > at
+                        );
+                    }) ?? null
+                );
             }
 
             async update(id: string, data: any) {
@@ -119,6 +131,17 @@ describe('Discipline API Integration Tests', () => {
         });
     };
 
+    const seedActiveTotalSuspension = () => {
+        createdDisciplines.push({
+            id: existingDisciplineId,
+            reason: 'Suspension total activa',
+            startDate: '2000-01-01',
+            endDate: '2999-01-01',
+            isTotalSuspension: true,
+            memberId: 'member-1',
+        });
+    };
+
     beforeAll(async () => {
         app = buildApp();
         await app.ready();
@@ -130,6 +153,128 @@ describe('Discipline API Integration Tests', () => {
 
     afterAll(async () => {
         await app.close();
+    });
+
+    describe('GET /api/v1/disciplines/:id', () => {
+        it('debe retornar 200 y obtener una sancion por id atravesando ruta, controller, use case y validator', async () => {
+            seedExistingDiscipline();
+
+            const response = await app.inject({
+                method: 'GET',
+                url: `/api/v1/disciplines/${existingDisciplineId}`,
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toEqual({
+                id: existingDisciplineId,
+                ...validPayload,
+            });
+        });
+
+        it('debe retornar 400 si el id informado no es valido', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/disciplines/discipline-1',
+            });
+
+            expect(response.statusCode).toBe(400);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El id informado no es valido');
+        });
+
+        it('debe retornar 404 si la sancion no existe', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: `/api/v1/disciplines/${existingDisciplineId}`,
+            });
+
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('La sancion no existe');
+        });
+    });
+
+    describe('GET /api/v1/members/:memberId/disciplines', () => {
+        it('debe retornar 200 y listar las sanciones del socio', async () => {
+            seedExistingDiscipline();
+
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/members/member-1/disciplines',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toEqual([
+                {
+                    id: existingDisciplineId,
+                    ...validPayload,
+                },
+            ]);
+        });
+
+        it('debe retornar 404 si el socio no existe al listar sanciones', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/members/member-inexistente/disciplines',
+            });
+
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El socio especificado no existe');
+        });
+    });
+
+    describe('GET /api/v1/members/:memberId/discipline-status', () => {
+        it('debe retornar 200 e indicar suspension si el socio tiene suspension total activa', async () => {
+            seedActiveTotalSuspension();
+
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/members/member-1/discipline-status',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toEqual({
+                memberId: 'member-1',
+                isSuspended: true,
+                activeTotalSuspension: {
+                    id: existingDisciplineId,
+                    reason: 'Suspension total activa',
+                    startDate: '2000-01-01',
+                    endDate: '2999-01-01',
+                    isTotalSuspension: true,
+                    memberId: 'member-1',
+                },
+            });
+        });
+
+        it('debe retornar 200 e indicar que no esta suspendido si no hay suspension total activa', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/members/member-1/discipline-status',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toEqual({
+                memberId: 'member-1',
+                isSuspended: false,
+            });
+        });
+
+        it('debe retornar 404 si el socio no existe al consultar estado disciplinario', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/members/member-inexistente/discipline-status',
+            });
+
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El socio especificado no existe');
+        });
     });
 
     describe('POST /api/v1/disciplines', () => {
