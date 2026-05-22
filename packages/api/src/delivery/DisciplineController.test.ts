@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DisciplineController } from './DisciplineController.js';
-import { CreateDisciplineRequest, DisciplineDTO } from '@alentapp/shared';
+import { CreateDisciplineRequest, DisciplineDTO, UpdateDisciplineRequest } from '@alentapp/shared';
 
 describe('DisciplineController', () => {
     const mockCreateUseCase = { execute: vi.fn() };
@@ -34,6 +34,17 @@ describe('DisciplineController', () => {
 
     const mockRequest = {
         body: validRequest,
+    };
+
+    const disciplineId = '11111111-1111-4111-8111-111111111111';
+    const updateRequest: UpdateDisciplineRequest = {
+        reason: 'Reincidencia disciplinaria',
+        isTotalSuspension: false,
+    };
+
+    const mockUpdateRequest = {
+        params: { id: disciplineId },
+        body: updateRequest,
     };
 
     beforeEach(() => {
@@ -88,6 +99,61 @@ describe('DisciplineController', () => {
             expect(mockReply.send).toHaveBeenCalledWith({
                 error: 'El socio especificado no existe',
             });
+        });
+    });
+
+    describe('update', () => {
+        it('debe devolver status 200 y la sancion actualizada si la modificacion es exitosa', async () => {
+            const mockDiscipline: DisciplineDTO = {
+                id: disciplineId,
+                reason: 'Reincidencia disciplinaria',
+                startDate: '2026-05-01',
+                endDate: '2026-05-15',
+                isTotalSuspension: false,
+                memberId: 'member-1',
+            };
+            mockUpdateUseCase.execute.mockResolvedValueOnce(mockDiscipline);
+
+            await controller.update(mockUpdateRequest as any, mockReply as any);
+
+            expect(mockUpdateUseCase.execute).toHaveBeenCalledWith(disciplineId, updateRequest);
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: mockDiscipline });
+        });
+
+        it('debe devolver status 400 si el id de sancion no es valido', async () => {
+            mockUpdateUseCase.execute.mockRejectedValueOnce(
+                new Error('El id de la sancion no es valido'),
+            );
+
+            await controller.update(mockUpdateRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(400);
+            expect(mockReply.send).toHaveBeenCalledWith({
+                error: 'El id de la sancion no es valido',
+            });
+        });
+
+        it('debe devolver status 400 si las fechas actualizadas son invalidas', async () => {
+            mockUpdateUseCase.execute.mockRejectedValueOnce(
+                new Error('La fecha de fin debe ser posterior a la de inicio'),
+            );
+
+            await controller.update(mockUpdateRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(400);
+            expect(mockReply.send).toHaveBeenCalledWith({
+                error: 'La fecha de fin debe ser posterior a la de inicio',
+            });
+        });
+
+        it('debe devolver status 404 si la sancion no existe', async () => {
+            mockUpdateUseCase.execute.mockRejectedValueOnce(new Error('La sancion no existe'));
+
+            await controller.update(mockUpdateRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(404);
+            expect(mockReply.send).toHaveBeenCalledWith({ error: 'La sancion no existe' });
         });
     });
 });

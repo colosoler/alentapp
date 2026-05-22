@@ -50,4 +50,31 @@ describe('DisciplineValidator', () => {
             );
         });
     });
+
+    describe('validateTotalSuspension', () => {
+        it('debe pasar si el valor informado es booleano', () => {
+            expect(() => validator.validateTotalSuspension(true)).not.toThrow();
+            expect(() => validator.validateTotalSuspension(false)).not.toThrow();
+        });
+
+        it('debe lanzar error si el valor informado no es booleano', () => {
+            expect(() => validator.validateTotalSuspension('true')).toThrow(
+                'Faltan campos requeridos',
+            );
+        });
+    });
+
+    describe('validateDisciplineId', () => {
+        it('debe pasar si el id de sancion es un UUID valido', () => {
+            expect(() =>
+                validator.validateDisciplineId('11111111-1111-4111-8111-111111111111'),
+            ).not.toThrow();
+        });
+
+        it('debe lanzar error si el id de sancion no es un UUID valido', () => {
+            expect(() => validator.validateDisciplineId('discipline-1')).toThrow(
+                'El id de la sancion no es valido',
+            );
+        });
+    });
 });
