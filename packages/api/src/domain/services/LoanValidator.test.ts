@@ -25,4 +25,22 @@ describe('LoanValidator', () => {
             ).toThrow('Faltan campos requeridos');
         });
     });
+
+    // === UPDATE LOAN STATUS ===
+
+    describe('validateItemName - Update Loan Status', () => {
+        it('debe lanzar error si el nombre del item esta vacio', () => {
+            expect(() => validator.validateItemName('   ')).toThrow(
+                'El nombre del ítem es obligatorio',
+            );
+        });
+    });
+
+    describe('validateMemberId - Update Loan Status', () => {
+        it('debe lanzar error si el member_id no es un UUID valido', () => {
+            expect(() => validator.validateMemberId('invalid-id')).toThrow(
+                'El id del socio no es válido',
+            );
+        });
+    });
 });
