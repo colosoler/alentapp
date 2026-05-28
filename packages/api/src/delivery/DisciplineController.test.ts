@@ -47,6 +47,10 @@ describe('DisciplineController', () => {
         body: updateRequest,
     };
 
+    const mockDeleteRequest = {
+        params: { id: disciplineId },
+    };
+
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -151,6 +155,40 @@ describe('DisciplineController', () => {
             mockUpdateUseCase.execute.mockRejectedValueOnce(new Error('La sancion no existe'));
 
             await controller.update(mockUpdateRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(404);
+            expect(mockReply.send).toHaveBeenCalledWith({ error: 'La sancion no existe' });
+        });
+    });
+
+    describe('delete', () => {
+        it('debe devolver status 204 si la eliminacion es exitosa', async () => {
+            mockDeleteUseCase.execute.mockResolvedValueOnce(undefined);
+
+            await controller.delete(mockDeleteRequest as any, mockReply as any);
+
+            expect(mockDeleteUseCase.execute).toHaveBeenCalledWith(disciplineId);
+            expect(mockReply.status).toHaveBeenCalledWith(204);
+            expect(mockReply.send).toHaveBeenCalledWith();
+        });
+
+        it('debe devolver status 400 si el id de sancion no es valido', async () => {
+            mockDeleteUseCase.execute.mockRejectedValueOnce(
+                new Error('El id de la sancion no es valido'),
+            );
+
+            await controller.delete(mockDeleteRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(400);
+            expect(mockReply.send).toHaveBeenCalledWith({
+                error: 'El id de la sancion no es valido',
+            });
+        });
+
+        it('debe devolver status 404 si la sancion no existe', async () => {
+            mockDeleteUseCase.execute.mockRejectedValueOnce(new Error('La sancion no existe'));
+
+            await controller.delete(mockDeleteRequest as any, mockReply as any);
 
             expect(mockReply.status).toHaveBeenCalledWith(404);
             expect(mockReply.send).toHaveBeenCalledWith({ error: 'La sancion no existe' });

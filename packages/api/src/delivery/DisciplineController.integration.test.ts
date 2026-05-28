@@ -88,7 +88,11 @@ vi.mock('../infrastructure/PostgresDisciplineRepository.js', () => {
                 return updatedDiscipline;
             }
 
-            async delete() {
+            async delete(id: string) {
+                const index = createdDisciplines.findIndex((discipline) => discipline.id === id);
+                if (index > -1) {
+                    createdDisciplines.splice(index, 1);
+                }
                 return;
             }
         },
@@ -262,6 +266,47 @@ describe('Discipline API Integration Tests', () => {
                 payload: {
                     reason: 'Reincidencia disciplinaria',
                 },
+            });
+
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('La sancion no existe');
+            expect(createdDisciplines).toHaveLength(0);
+        });
+    });
+
+    describe('DELETE /api/v1/disciplines/:id', () => {
+        it('debe retornar 204 y eliminar la sancion atravesando ruta, controller, use case y validator', async () => {
+            seedExistingDiscipline();
+
+            const response = await app.inject({
+                method: 'DELETE',
+                url: `/api/v1/disciplines/${existingDisciplineId}`,
+            });
+
+            expect(response.statusCode).toBe(204);
+            expect(response.payload).toBe('');
+            expect(createdDisciplines).toHaveLength(0);
+        });
+
+        it('debe retornar 400 si el id informado no es valido', async () => {
+            seedExistingDiscipline();
+
+            const response = await app.inject({
+                method: 'DELETE',
+                url: '/api/v1/disciplines/discipline-1',
+            });
+
+            expect(response.statusCode).toBe(400);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El id de la sancion no es valido');
+            expect(createdDisciplines).toHaveLength(1);
+        });
+
+        it('debe retornar 404 si la sancion a eliminar no existe', async () => {
+            const response = await app.inject({
+                method: 'DELETE',
+                url: `/api/v1/disciplines/${existingDisciplineId}`,
             });
 
             expect(response.statusCode).toBe(404);
