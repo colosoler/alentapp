@@ -77,4 +77,18 @@ describe('DisciplineValidator', () => {
             );
         });
     });
+
+    describe('validateReportedId', () => {
+        it('debe pasar si el id informado es un UUID valido', () => {
+            expect(() =>
+                validator.validateReportedId('11111111-1111-4111-8111-111111111111'),
+            ).not.toThrow();
+        });
+
+        it('debe lanzar error si el id informado no es un UUID valido', () => {
+            expect(() => validator.validateReportedId('discipline-1')).toThrow(
+                'El id informado no es valido',
+            );
+        });
+    });
 });

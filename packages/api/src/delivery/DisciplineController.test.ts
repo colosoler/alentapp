@@ -37,9 +37,23 @@ describe('DisciplineController', () => {
     };
 
     const disciplineId = '11111111-1111-4111-8111-111111111111';
+    const memberId = 'member-1';
     const updateRequest: UpdateDisciplineRequest = {
         reason: 'Reincidencia disciplinaria',
         isTotalSuspension: false,
+    };
+
+    const existingDiscipline: DisciplineDTO = {
+        id: disciplineId,
+        ...validRequest,
+    };
+
+    const mockGetByIdRequest = {
+        params: { id: disciplineId },
+    };
+
+    const mockGetByMemberRequest = {
+        params: { memberId },
     };
 
     const mockUpdateRequest = {
@@ -53,6 +67,91 @@ describe('DisciplineController', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    describe('getById', () => {
+        it('debe devolver status 200 y la sancion si existe', async () => {
+            mockGetUseCase.execute.mockResolvedValueOnce(existingDiscipline);
+
+            await controller.getById(mockGetByIdRequest as any, mockReply as any);
+
+            expect(mockGetUseCase.execute).toHaveBeenCalledWith(disciplineId);
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: existingDiscipline });
+        });
+
+        it('debe devolver status 400 si el id informado no es valido', async () => {
+            mockGetUseCase.execute.mockRejectedValueOnce(new Error('El id informado no es valido'));
+
+            await controller.getById(mockGetByIdRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(400);
+            expect(mockReply.send).toHaveBeenCalledWith({ error: 'El id informado no es valido' });
+        });
+
+        it('debe devolver status 404 si la sancion no existe', async () => {
+            mockGetUseCase.execute.mockRejectedValueOnce(new Error('La sancion no existe'));
+
+            await controller.getById(mockGetByIdRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(404);
+            expect(mockReply.send).toHaveBeenCalledWith({ error: 'La sancion no existe' });
+        });
+    });
+
+    describe('getByMember', () => {
+        it('debe devolver status 200 y las sanciones del socio', async () => {
+            mockListByMemberUseCase.execute.mockResolvedValueOnce([existingDiscipline]);
+
+            await controller.getByMember(mockGetByMemberRequest as any, mockReply as any);
+
+            expect(mockListByMemberUseCase.execute).toHaveBeenCalledWith(memberId);
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: [existingDiscipline] });
+        });
+
+        it('debe devolver status 404 si el socio no existe', async () => {
+            mockListByMemberUseCase.execute.mockRejectedValueOnce(
+                new Error('El socio especificado no existe'),
+            );
+
+            await controller.getByMember(mockGetByMemberRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(404);
+            expect(mockReply.send).toHaveBeenCalledWith({
+                error: 'El socio especificado no existe',
+            });
+        });
+    });
+
+    describe('getMemberStatus', () => {
+        it('debe devolver status 200 y el estado disciplinario del socio', async () => {
+            const status = {
+                memberId,
+                isSuspended: true,
+                activeTotalSuspension: existingDiscipline,
+            };
+            mockGetMemberStatusUseCase.execute.mockResolvedValueOnce(status);
+
+            await controller.getMemberStatus(mockGetByMemberRequest as any, mockReply as any);
+
+            expect(mockGetMemberStatusUseCase.execute).toHaveBeenCalledWith(memberId);
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: status });
+        });
+
+        it('debe devolver status 404 si el socio no existe al consultar el estado', async () => {
+            mockGetMemberStatusUseCase.execute.mockRejectedValueOnce(
+                new Error('El socio especificado no existe'),
+            );
+
+            await controller.getMemberStatus(mockGetByMemberRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(404);
+            expect(mockReply.send).toHaveBeenCalledWith({
+                error: 'El socio especificado no existe',
+            });
+        });
     });
 
     describe('create', () => {
