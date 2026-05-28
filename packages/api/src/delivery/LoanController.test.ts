@@ -106,4 +106,42 @@ describe('LoanController', () => {
             });
         });
     });
+
+    // === LIST LOANS ===
+
+    describe('getAll - List Loans', () => {
+        const mockRequest = {
+            query: {},
+        };
+
+        it('debe devolver status 200 y la lista de prestamos', async () => {
+            const mockLoans = [
+                {
+                    id: 'loan-1',
+                    member_id: '123e4567-e89b-12d3-a456-426614174000',
+                    item_name: 'Balon de futbol',
+                    loan_date: '2026-05-28T00:00:00.000Z',
+                    due_date: '2026-06-15',
+                    status: 'Loaned',
+                    member: { name: 'Socio Existente' },
+                },
+            ];
+            mockGetAllUseCase.execute.mockResolvedValueOnce(mockLoans);
+
+            await controller.getAll(mockRequest as any, mockReply as any);
+
+            expect(mockGetAllUseCase.execute).toHaveBeenCalledWith({});
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: mockLoans });
+        });
+
+        it('debe devolver status 200 con array vacio si no hay prestamos', async () => {
+            mockGetAllUseCase.execute.mockResolvedValueOnce([]);
+
+            await controller.getAll(mockRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: [] });
+        });
+    });
 });

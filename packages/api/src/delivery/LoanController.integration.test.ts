@@ -235,3 +235,59 @@ describe('Loan API Integration Tests - Update Status', () => {
         });
     });
 });
+
+// === LIST LOANS ===
+
+describe('Loan API Integration Tests - List', () => {
+    let app: FastifyInstance;
+
+    const validPayload: CreateLoanRequest = {
+        member_id: MEMBER_ID,
+        item_name: 'Balon de futbol',
+        due_date: '2026-06-15',
+    };
+
+    beforeAll(async () => {
+        app = buildApp();
+        await app.ready();
+
+        createdLoans.length = 0;
+
+        await app.inject({
+            method: 'POST',
+            url: '/api/v1/equipment-loan',
+            payload: validPayload,
+        });
+    });
+
+    afterAll(async () => {
+        await app.close();
+    });
+
+    describe('GET /api/v1/equipment-loan', () => {
+        it('debe retornar 200 y la lista de prestamos', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/equipment-loan',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(Array.isArray(body.data)).toBe(true);
+            expect(body.data.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it('debe retornar 200 con array vacio si no hay prestamos', async () => {
+            createdLoans.length = 0;
+
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/equipment-loan',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toEqual([]);
+        });
+    });
+});
