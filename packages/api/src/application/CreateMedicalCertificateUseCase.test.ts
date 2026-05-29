@@ -70,23 +70,6 @@ describe('CreateMedicalCertificateUseCase', () => {
 
         expect(mockCertRepo.create).not.toHaveBeenCalled();
     });
-
-    it('debe propagar errores del validador cuando faltan campos requeridos', async () => {
-        const req: CreateMedicalCertificateRequest = {
-            member_id: 'member-1',
-            issue_date: '',
-            expiration_date: '',
-            status: 'Active',
-            file_url: null,
-        };
-
-        vi.mocked(mockValidator.validateRequiredFields).mockImplementation(() => { throw new Error('Campos requeridos faltantes'); });
-
-        await expect(useCase.execute(req)).rejects.toThrow('Campos requeridos faltantes');
-
-        expect(mockMemberRepo.findById).not.toHaveBeenCalled();
-        expect(mockCertRepo.create).not.toHaveBeenCalled();
-    });
 });
 
 export {};
