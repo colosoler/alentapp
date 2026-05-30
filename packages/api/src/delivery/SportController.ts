@@ -34,7 +34,8 @@ export class SportController {
                 error.message.includes('El nombre del deporte es obligatorio') ||
                 error.message.includes('La descripcion del deporte es obligatoria') ||
                 error.message.includes('La capacidad maxima debe ser mayor a cero') ||
-                error.message.includes('El precio adicional es obligatorio')
+                error.message.includes('El precio adicional es obligatorio') ||
+                error.message.includes('El precio adicional no puede ser negativo')
             ) {
                 return reply.status(400).send({ error: error.message });
             }
