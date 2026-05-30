@@ -1,9 +1,15 @@
 import { SportRepository } from '../domain/SportRepository.js';
+import { SportValidator } from '../domain/services/SportValidator.js';
 
 export class DeleteSportUseCase {
-    constructor(private readonly sportRepo: SportRepository) {}
+    constructor(
+        private readonly sportRepo: SportRepository,
+        private readonly sportValidator: SportValidator,
+    ) {}
 
     async execute(id: string): Promise<void> {
+        this.sportValidator.validateSportId(id);
+
         const existingSport = await this.sportRepo.findById(id);
 
         if (!existingSport) {
