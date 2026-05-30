@@ -36,4 +36,11 @@ describe('CancelPaymentUseCase', () => {
         expect(mockPaymentRepo.cancel).toHaveBeenCalledWith('payment-1');
         expect(result.status).toBe('Canceled');
     });
+
+    it('Debe dar error si el pago ya está cancelado', async () => {
+        vi.mocked(mockPaymentRepo.findById).mockResolvedValueOnce({ ...mockPendingPayment, status: 'Canceled' });
+
+        await expect(useCase.execute('payment-1')).rejects.toThrow('El pago ya se encuentra cancelado');
+        expect(mockPaymentRepo.cancel).not.toHaveBeenCalled();
+    });
 });
