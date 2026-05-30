@@ -1,0 +1,58 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * Tests E2E Full-Stack para la vista de Certificados Médicos.
+ * No hay mocks de red. Playwright interactúa con:
+ *   - El Frontend React en http://localhost:5174
+ *   - La API Fastify real en http://localhost:3001
+ *   - La base de datos PostgreSQL de test (alentapp_test_db)
+ */
+
+test.describe('Medical Certificates Full-Stack E2E', () => {
+  test('debe crear un certificado medico real y luego eliminarlo', async ({ page }) => {
+    const memberName = 'Socio Certificado Baja E2E';
+    const memberDni = '55566699';
+    const memberEmail = 'certificado-baja-e2e@alentapp.dev';
+    const memberBirthdate = '1995-06-15';
+    const issueDate = '2026-05-30';
+    const expirationDate = '2027-05-30';
+    const memberLabel = `${memberName} - ${memberDni}`;
+
+    await page.goto('/members');
+
+    await page.locator('button:has-text("Agregar Miembro")').click();
+    await expect(page.getByText('Agregar Nuevo Miembro')).toBeVisible();
+
+    await page.getByPlaceholder('Ej. Juan Pérez').fill(memberName);
+    await page.getByPlaceholder('Ej. 12345678').fill(memberDni);
+    await page.getByPlaceholder('ejemplo@correo.com').fill(memberEmail);
+    await page.getByLabel(/Fecha de Nacimiento/i).fill(memberBirthdate);
+    await page.getByRole('button', { name: 'Crear Miembro' }).click();
+
+    await expect(page.getByRole('button', { name: 'Crear Miembro' })).toBeHidden();
+    await expect(page.getByText(memberName)).toBeVisible({ timeout: 10000 });
+
+    await page.goto('/medical-certificates');
+    await expect(page.getByText('No se encontraron certificados médicos.')).toBeVisible({ timeout: 10000 });
+
+    await page.locator('button:has-text("Nuevo Certificado")').click();
+    await expect(page.getByText('Nuevo Certificado Médico')).toBeVisible();
+
+    await page.getByText('Seleccione un socio').click();
+    await page.getByText(memberLabel).click();
+
+    await page.getByLabel(/Fecha de emisión/i).fill(issueDate);
+    await page.getByLabel(/Fecha de vencimiento/i).fill(expirationDate);
+
+    await page.getByRole('button', { name: 'Crear Certificado' }).click();
+
+    await expect(page.getByRole('button', { name: 'Crear Certificado' })).toBeHidden();
+    await expect(page.getByText(memberLabel)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Activo')).toBeVisible();
+
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: /Eliminar certificado/i }).first().click();
+
+    await expect(page.getByText('No se encontraron certificados médicos.')).toBeVisible({ timeout: 10000 });
+  });
+});
