@@ -19,4 +19,9 @@ describe('PaymentValidator', () => {
         expect(() => validator.validateMonth(13)).toThrow('El mes debe estar entre 1 y 12');
         expect(() => validator.validateYear(2000)).toThrow('El año ingresado no es válido');
     });
+
+    it('Debe dar error si la fecha de vencimiento es inválida', () => {
+        expect(() => validator.validateDueDate('not-a-date')).toThrow('La fecha de vencimiento no es válida');
+        expect(() => validator.validateDueDate('2025-02-30')).toThrow('La fecha de vencimiento no es válida');
+    });
 });
