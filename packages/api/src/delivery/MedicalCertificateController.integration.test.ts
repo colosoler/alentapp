@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { FastifyInstance } from 'fastify';
-import { buildApp } from '../app.js';
 import { CreateMedicalCertificateRequest } from '@alentapp/shared';
+
+const { previousDatabaseUrl } = vi.hoisted(() => {
+    const previousDatabaseUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = 'postgresql://localhost:5432/alentapp_test';
+
+    return { previousDatabaseUrl };
+});
 
 // Mock repositories para probar la integración sin tocar la DB real
 vi.mock('../infrastructure/PostgresMemberRepository.js', () => {
@@ -32,14 +38,17 @@ vi.mock('../infrastructure/PostgresMedicalCertificateRepository.js', () => {
 
 describe('MedicalCertificate API Integration Tests', () => {
     let app: FastifyInstance;
+    let buildApp: typeof import('../app.js').buildApp;
 
     beforeAll(async () => {
+        ({ buildApp } = await import('../app.js'));
         app = buildApp();
         await app.ready();
     });
 
     afterAll(async () => {
         await app.close();
+        process.env.DATABASE_URL = previousDatabaseUrl;
     });
 
     describe('POST /api/v1/medical-certificates', () => {
@@ -48,8 +57,6 @@ describe('MedicalCertificate API Integration Tests', () => {
                 member_id: '11111111-1111-1111-1111-111111111111',
                 issue_date: '2026-05-01',
                 expiration_date: '2027-05-01',
-                status: 'Active',
-                file_url: null,
             };
 
             const response = await app.inject({ method: 'POST', url: '/api/v1/medical-certificates', payload });
