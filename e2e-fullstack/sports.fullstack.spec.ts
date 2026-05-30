@@ -40,4 +40,34 @@ test.describe('Sports Full-Stack E2E', () => {
     await expect(page.getByText('$1500')).toBeVisible();
     await expect(page.getByText('Requerido')).toBeVisible();
   });
+
+  test('debe eliminar un deporte real y quitarlo de la tabla', async ({ page }) => {
+    await page.goto('/sports');
+
+    const sportName = 'Deporte Delete E2E Fullstack';
+
+    // Crear un deporte real como precondicion del borrado
+    await page.locator('button:has-text("Agregar Deporte")').click();
+    await expect(page.getByText('Agregar Nuevo Deporte')).toBeVisible();
+
+    await page.getByPlaceholder('Ej. Natacion').fill(sportName);
+    await page
+      .getByPlaceholder('Detalle de la actividad, horarios o condiciones generales')
+      .fill('Actividad creada para probar eliminacion desde Playwright');
+    await page.getByLabel(/Capacidad maxima/i).fill('10');
+    await page.getByLabel(/Precio adicional/i).fill('500');
+
+    await page.getByRole('button', { name: 'Crear Deporte' }).click();
+    await expect(page.getByRole('button', { name: 'Crear Deporte' })).toBeHidden();
+    await expect(page.getByText(sportName)).toBeVisible({ timeout: 10000 });
+
+    // Aceptar el confirm del navegador automaticamente
+    page.on('dialog', (dialog) => dialog.accept());
+
+    // Eliminar desde la fila del deporte creado
+    const sportRow = page.locator('tr').filter({ hasText: sportName });
+    await sportRow.getByRole('button', { name: /Eliminar deporte/i }).click();
+
+    await expect(page.getByText(sportName)).toBeHidden({ timeout: 10000 });
+  });
 });
