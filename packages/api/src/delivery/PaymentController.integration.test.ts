@@ -63,5 +63,17 @@ describe('Pruebas de Integración de la API de Pagos', () => {
             expect(body.data.status).toBe('Paid');
             expect(body.data.paymentDate).not.toBeNull();
         });
+
+        it('Debe devolver 404 cuando el pago no existe', async () => {
+            const response = await app.inject({
+                method: 'PUT',
+                url: '/api/v1/payments/pago-inexistente',
+                payload: { status: 'Paid' },
+            });
+
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toContain('El pago especificado no existe');
+        });
     });
 });
