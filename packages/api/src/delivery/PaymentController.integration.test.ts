@@ -68,5 +68,19 @@ describe('Pruebas de Integración de la API de Pagos', () => {
             expect(body.data).toBeDefined();
             expect(body.data.status).toBe('Pending');
         });
+
+        it('Debe devolver 400 cuando faltan campos requeridos', async () => {
+            const response = await app.inject({
+                method: 'POST',
+                url: '/api/v1/payments',
+                payload: {
+                    amount: 150,
+                },
+            });
+
+            expect(response.statusCode).toBe(400);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toContain('Faltan campos requeridos');
+        });
     });
 });
