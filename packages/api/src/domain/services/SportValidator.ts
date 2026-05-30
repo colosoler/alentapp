@@ -42,6 +42,10 @@ export class SportValidator {
         if (typeof additionalPrice !== 'number' || Number.isNaN(additionalPrice)) {
             throw new Error('El precio adicional es obligatorio');
         }
+
+        if (additionalPrice < 0) {
+            throw new Error('El precio adicional no puede ser negativo');
+        }
     }
 
     validateRequiresMedicalCertificate(requiresMedicalCertificate: unknown): void {
