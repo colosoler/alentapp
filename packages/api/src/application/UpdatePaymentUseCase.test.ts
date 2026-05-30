@@ -42,4 +42,17 @@ describe('UpdatePaymentUseCase', () => {
         expect(mockPaymentRepo.update).not.toHaveBeenCalled();
     });
 
+        it('Debe actualizar el monto y el mes correctamente', async () => {
+        vi.mocked(mockPaymentRepo.update).mockResolvedValueOnce({
+            ...mockPendingPayment,
+            amount: 200,
+            month: 7,
+        });
+
+        const result = await useCase.execute('payment-1', { amount: 200, month: 7 });
+
+        expect(mockPaymentRepo.update).toHaveBeenCalledWith('payment-1', { amount: 200, month: 7 });
+        expect(result.amount).toBe(200);
+        expect(result.month).toBe(7);
+    });
 });
