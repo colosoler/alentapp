@@ -177,4 +177,71 @@ describe('Sport API Integration Tests', () => {
             expect(createdSports).toHaveLength(1);
         });
     });
+
+    describe('PATCH /api/v1/sports/:id', () => {
+        it('debe retornar 200 y actualizar descripcion y capacidad maxima', async () => {
+            createdSports.push({
+                id: 'sport-1',
+                ...validPayload,
+                current_enrollment_count: 5,
+            });
+
+            const response = await app.inject({
+                method: 'PATCH',
+                url: '/api/v1/sports/sport-1',
+                payload: {
+                    description: 'Entrenamiento avanzado en pileta',
+                    max_capacity: 25,
+                },
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toEqual({
+                id: 'sport-1',
+                ...validPayload,
+                description: 'Entrenamiento avanzado en pileta',
+                max_capacity: 25,
+                current_enrollment_count: 5,
+            });
+            expect(createdSports[0].description).toBe('Entrenamiento avanzado en pileta');
+            expect(createdSports[0].max_capacity).toBe(25);
+        });
+
+        it('debe retornar 404 si el deporte no existe', async () => {
+            const response = await app.inject({
+                method: 'PATCH',
+                url: '/api/v1/sports/sport-inexistente',
+                payload: {
+                    description: 'Nueva descripcion',
+                },
+            });
+
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El deporte no existe');
+            expect(createdSports).toHaveLength(0);
+        });
+
+        it('debe retornar 409 si la nueva capacidad es menor que los inscriptos actuales', async () => {
+            createdSports.push({
+                id: 'sport-1',
+                ...validPayload,
+                current_enrollment_count: 8,
+            });
+
+            const response = await app.inject({
+                method: 'PATCH',
+                url: '/api/v1/sports/sport-1',
+                payload: {
+                    max_capacity: 4,
+                },
+            });
+
+            expect(response.statusCode).toBe(409);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('No hay cupo disponible');
+            expect(createdSports[0].max_capacity).toBe(validPayload.max_capacity);
+        });
+    });
 });
