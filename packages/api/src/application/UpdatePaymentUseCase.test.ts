@@ -31,4 +31,9 @@ describe('UpdatePaymentUseCase', () => {
         expect(mockPaymentRepo.update).not.toHaveBeenCalled();
     });
 
+    it('Debe rechazar el uso del status Canceled (usar endpoint de cancelación)', async () => {
+        await expect(useCase.execute('payment-1', { status: 'Canceled' as any })).rejects.toThrow('Use el endpoint de cancelación');
+        expect(mockPaymentRepo.update).not.toHaveBeenCalled();
+    });
+
 });
