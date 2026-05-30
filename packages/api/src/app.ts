@@ -177,7 +177,7 @@ export function buildApp() {
         sportRepo,
         sportValidator,
     );
-    const deleteSportUseCase = new DeleteSportUseCase(sportRepo);
+    const deleteSportUseCase = new DeleteSportUseCase(sportRepo, sportValidator);
 
     const memberController = new MemberController(
         createMemberUseCase,
