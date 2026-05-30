@@ -13,4 +13,10 @@ describe('PaymentValidator', () => {
             expect(() => validator.validateAmount(0)).toThrow('El monto debe ser mayor a cero');
             expect(() => validator.validateAmount(-10)).toThrow('El monto debe ser mayor a cero');
         });
+        
+    it('Debe dar error si el mes o el año están fuera del rango válido', () => {
+        expect(() => validator.validateMonth(0)).toThrow('El mes debe estar entre 1 y 12');
+        expect(() => validator.validateMonth(13)).toThrow('El mes debe estar entre 1 y 12');
+        expect(() => validator.validateYear(2000)).toThrow('El año ingresado no es válido');
+    });
 });
