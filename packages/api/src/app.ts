@@ -171,7 +171,7 @@ export function buildApp() {
         sportValidator,
     );
     const getSportsUseCase = new GetSportsUseCase(sportRepo);
-    const getSportByIdUseCase = new GetSportByIdUseCase(sportRepo);
+    const getSportByIdUseCase = new GetSportByIdUseCase(sportRepo, sportValidator);
     const updateSportUseCase = new UpdateSportUseCase(sportRepo, sportValidator);
     const updateSportEnrollmentCountUseCase = new UpdateSportEnrollmentCountUseCase(
         sportRepo,
