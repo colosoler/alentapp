@@ -43,4 +43,21 @@ describe('LoanValidator', () => {
             );
         });
     });
+
+    // === LIST LOANS ===
+
+    describe('validateDueDate - List Loans', () => {
+        it('debe lanzar error si la fecha de devolucion no es una fecha valida', () => {
+            expect(() => validator.validateDueDate('fecha-invalida', new Date())).toThrow(
+                'La fecha de devolución no es válida',
+            );
+        });
+
+        it('debe lanzar error si la fecha de devolucion es anterior a la de prestamo', () => {
+            const loanDate = new Date('2026-06-01');
+            expect(() => validator.validateDueDate('2026-05-01', loanDate)).toThrow(
+                'La fecha de devolución debe ser posterior a la de inicio',
+            );
+        });
+    });
 });
