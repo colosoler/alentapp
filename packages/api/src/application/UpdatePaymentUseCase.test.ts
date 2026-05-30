@@ -36,4 +36,10 @@ describe('UpdatePaymentUseCase', () => {
         expect(mockPaymentRepo.update).not.toHaveBeenCalled();
     });
 
+    it('Debe dar error al intentar pagar un pago cancelado', async () => {
+        vi.mocked(mockPaymentRepo.findById).mockResolvedValueOnce({ ...mockPendingPayment, status: 'Canceled' });
+        await expect(useCase.execute('payment-1', { status: 'Paid' })).rejects.toThrow('No se puede pagar un pago cancelado');
+        expect(mockPaymentRepo.update).not.toHaveBeenCalled();
+    });
+
 });
