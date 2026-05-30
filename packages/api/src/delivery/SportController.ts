@@ -68,6 +68,10 @@ export class SportController {
             const sport = await this.getSportByIdUseCase.execute(request.params.id);
             return reply.status(200).send({ data: sport });
         } catch (error: any) {
+            if (error.message.includes('El id informado no es valido')) {
+                return reply.status(400).send({ error: error.message });
+            }
+
             if (error.message.includes('El deporte no existe')) {
                 return reply.status(404).send({ error: error.message });
             }
