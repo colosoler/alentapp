@@ -37,7 +37,7 @@ vi.mock('../infrastructure/PostgresMemberRepository.js', () => {
     };
 });
 
-describe('Payment API Integration Tests', () => {
+describe('Pruebas de Integración de la API de Pagos', () => {
     let app: FastifyInstance;
 
     beforeAll(async () => {
@@ -50,7 +50,7 @@ describe('Payment API Integration Tests', () => {
     });
 
     describe('POST /api/v1/payments', () => {
-        it('should return 201 and create a payment', async () => {
+        it('Debe devolver 201 y crear un pago', async () => {
             const response = await app.inject({
                 method: 'POST',
                 url: '/api/v1/payments',
