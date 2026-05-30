@@ -48,5 +48,7 @@ describe('CreateLockerUseCase', () => {
             location: 'Pasillo Secundario',
             status: 'Maintenance',
         });
+
+        expect(result.status).toBe('Maintenance');
     });
 })
