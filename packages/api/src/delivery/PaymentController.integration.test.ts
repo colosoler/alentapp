@@ -15,7 +15,7 @@ const payments: any[] = [
         status: 'Pending',
         dueDate: '2026-06-15T00:00:00.000Z',
         paymentDate: null,
-        memberId: 'member-1',
+        memberId: 'socio-1',
     },
 ];
 
@@ -32,6 +32,12 @@ vi.mock('../infrastructure/PostgresPaymentRepository.js', () => {
                 if (data.status === 'Paid') {
                     payments[idx].paymentDate = new Date().toISOString();
                 }
+                return payments[idx];
+            }
+            async cancel(id: string) {
+                const idx = payments.findIndex((p) => p.id === id);
+                if (idx === -1) return null;
+                payments[idx].status = 'Canceled';
                 return payments[idx];
             }
         },
@@ -74,6 +80,19 @@ describe('Pruebas de Integración de la API de Pagos', () => {
             expect(response.statusCode).toBe(404);
             const body = JSON.parse(response.payload);
             expect(body.error).toContain('El pago especificado no existe');
+        });
+    });
+
+    describe('PATCH /api/v1/payments/:id/cancel', () => {
+        it('Debe devolver 200 y cancelar el pago', async () => {
+            const response = await app.inject({
+                method: 'PATCH',
+                url: '/api/v1/payments/pago-001/cancel',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data.status).toBe('Canceled');
         });
     });
 });
