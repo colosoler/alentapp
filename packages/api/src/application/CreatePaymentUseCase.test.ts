@@ -67,4 +67,11 @@ describe('CreatePaymentUseCase', () => {
         expect(mockPaymentRepo.create).toHaveBeenCalledWith(validRequest);
         expect(result).toEqual(mockCreatedPayment);
     });
+
+    it('Debe dar error si el socio no existe', async () => {
+        vi.mocked(mockMemberRepo.findById).mockResolvedValueOnce(null);
+
+        await expect(useCase.execute(validRequest)).rejects.toThrow('El socio especificado no existe');
+        expect(mockPaymentRepo.create).not.toHaveBeenCalled();
+    });
 });
