@@ -72,6 +72,7 @@ describe('UpdateSportUseCase', () => {
             useCase.execute(sportId, { max_capacity: 4 }),
         ).rejects.toThrow('No hay cupo disponible');
 
+        expect(mockSportValidator.validateDescription).not.toHaveBeenCalled();
         expect(mockSportValidator.validateMaxCapacity).toHaveBeenCalledWith(4);
         expect(mockSportRepo.update).not.toHaveBeenCalled();
     });
@@ -86,5 +87,45 @@ describe('UpdateSportUseCase', () => {
         ).rejects.toThrow('La descripcion del deporte es obligatoria');
 
         expect(mockSportRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('debe actualizar solo la descripcion si no se informa capacidad maxima', async () => {
+        const updateData: UpdateSportRequest = {
+            description: 'Entrenamiento tecnico de pileta',
+        };
+        const updatedSport = {
+            ...existingSport,
+            ...updateData,
+        };
+        vi.mocked(mockSportRepo.update).mockResolvedValueOnce(updatedSport);
+
+        const result = await useCase.execute(sportId, updateData);
+
+        expect(mockSportValidator.validateDescription).toHaveBeenCalledWith(
+            updateData.description,
+        );
+        expect(mockSportValidator.validateMaxCapacity).not.toHaveBeenCalled();
+        expect(mockSportRepo.update).toHaveBeenCalledWith(sportId, updateData);
+        expect(result).toEqual(updatedSport);
+    });
+
+    it('debe permitir que la capacidad maxima sea igual a los inscriptos actuales', async () => {
+        const updateData: UpdateSportRequest = {
+            max_capacity: existingSport.current_enrollment_count,
+        };
+        const updatedSport = {
+            ...existingSport,
+            ...updateData,
+        };
+        vi.mocked(mockSportRepo.update).mockResolvedValueOnce(updatedSport);
+
+        const result = await useCase.execute(sportId, updateData);
+
+        expect(mockSportValidator.validateDescription).not.toHaveBeenCalled();
+        expect(mockSportValidator.validateMaxCapacity).toHaveBeenCalledWith(
+            existingSport.current_enrollment_count,
+        );
+        expect(mockSportRepo.update).toHaveBeenCalledWith(sportId, updateData);
+        expect(result).toEqual(updatedSport);
     });
 });

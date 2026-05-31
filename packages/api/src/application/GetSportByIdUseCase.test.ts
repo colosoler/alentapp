@@ -51,4 +51,13 @@ describe('GetSportByIdUseCase', () => {
 
         expect(mockSportRepo.findById).not.toHaveBeenCalled();
     });
+
+    it('debe lanzar error si el deporte no existe', async () => {
+        vi.mocked(mockSportRepo.findById).mockResolvedValueOnce(null);
+
+        await expect(useCase.execute(sportId)).rejects.toThrow('El deporte no existe');
+
+        expect(mockSportValidator.validateSportId).toHaveBeenCalledWith(sportId);
+        expect(mockSportRepo.findById).toHaveBeenCalledWith(sportId);
+    });
 });
