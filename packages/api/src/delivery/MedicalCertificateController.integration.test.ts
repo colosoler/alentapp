@@ -14,7 +14,7 @@ vi.mock('../infrastructure/PostgresMemberRepository.js', () => {
     return {
         PostgresMemberRepository: class {
             async findById(id: string) {
-                return id === '11111111-1111-1111-1111-111111111111'
+                return id === '11111111-1111-4111-8111-111111111111'
                     ? { id, name: 'Socio Integracion', birthdate: '1990-01-01' }
                     : null;
             }
@@ -54,7 +54,7 @@ describe('MedicalCertificate API Integration Tests', () => {
     describe('POST /api/v1/medical-certificates', () => {
         it('debe crear un certificado y retornar 201 cuando el socio existe', async () => {
             const payload: CreateMedicalCertificateRequest = {
-                member_id: '11111111-1111-1111-1111-111111111111',
+                member_id: '11111111-1111-4111-8111-111111111111',
                 issue_date: '2026-05-01',
                 expiration_date: '2027-05-01',
             };
@@ -71,7 +71,7 @@ describe('MedicalCertificate API Integration Tests', () => {
         it('debe retornar 400 si faltan campos requeridos', async () => {
             // missing issue_date
             const payload = {
-                member_id: '11111111-1111-1111-1111-111111111111',
+                member_id: '11111111-1111-4111-8111-111111111111',
                 expiration_date: '2027-05-01',
                 status: 'Active'
             } as any;
