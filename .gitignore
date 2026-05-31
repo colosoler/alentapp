@@ -8,6 +8,8 @@ test/unit/coverage
 test/e2e/reports
 test-results
 playwright-report-fullstack
+.stryker-tmp/
+**/reports/mutation/
 selenium-debug.log
 
 

@@ -6,6 +6,7 @@
     "scripts": {
         "dev": "tsx watch src/app.ts",
         "test": "vitest",
+        "test:mutation": "stryker run",
         "coverage": "vitest run --coverage"
     },
     "dependencies": {
@@ -17,6 +18,8 @@
         "fastify": "^5.8.5"
     },
     "devDependencies": {
+        "@stryker-mutator/core": "^9.6.1",
+        "@stryker-mutator/vitest-runner": "^9.6.1",
         "@types/pg": "^8.20.0",
         "@vitest/coverage-v8": "^4.1.5",
         "dotenv": "^16.6.1",
