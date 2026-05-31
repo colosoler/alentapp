@@ -11,7 +11,6 @@ import { test, expect } from '@playwright/test';
  */
 
   test('debe crear un certificado medico real, mostrarlo en la tabla y eliminarlo', async ({ page }) => {
-  test('debe crear un certificado medico real y mostrarlo en la tabla', async ({ page }) => {
     const memberName = 'Socio Certificado E2E';
     const memberDni = '55566688';
     const memberEmail = 'certificado-e2e@alentapp.dev';
