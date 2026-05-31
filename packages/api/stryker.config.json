@@ -13,6 +13,7 @@
     "src/application/CreateMedicalCertificateUseCase.test.ts",
     "src/application/CreatePaymentUseCase.test.ts",
     "src/application/CreateSportUseCase.test.ts",
+    "src/application/DeleteMedicalCertificateUseCase.test.ts",
     "src/application/DeleteDisciplineUseCase.test.ts",
     "src/application/DeleteSportUseCase.test.ts",
     "src/application/GetDisciplineUseCase.test.ts",
