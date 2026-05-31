@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { CreateMedicalCertificateRequest } from '@alentapp/shared';
 
@@ -17,7 +17,7 @@ vi.mock('../infrastructure/PostgresMemberRepository.js', () => {
     return {
         PostgresMemberRepository: class {
             async findById(id: string) {
-                return id === '11111111-1111-1111-1111-111111111111'
+                return id === '11111111-1111-4111-8111-111111111111'
                     ? { id, name: 'Socio Integracion', birthdate: '1990-01-01' }
                     : null;
             }
@@ -41,12 +41,9 @@ vi.mock('../infrastructure/PostgresMedicalCertificateRepository.js', () => {
                 }
                 return certificateStore.get(id) ?? null;
             }
-            async findByMemberId() { return []; }
+            async findByMemberId(memberId: string) { return Array.from(certificateStore.values()).filter((certificate) => certificate.member_id === memberId); }
             async update() { return null; }
             async delete(id: string) {
-                if (id === 'cert-fail') {
-                    throw new Error('DB down');
-                }
                 deleteCertificateMock(id);
                 certificateStore.delete(id);
                 return;
@@ -70,13 +67,49 @@ describe('MedicalCertificate API Integration Tests', () => {
         process.env.DATABASE_URL = previousDatabaseUrl;
     });
 
+    beforeEach(() => {
+        certificateStore.clear();
+        deleteCertificateMock.mockClear();
+    });
+
+    describe('POST /api/v1/medical-certificates', () => {
+        it('debe crear un certificado y retornar 201 cuando el socio existe', async () => {
+            const payload: CreateMedicalCertificateRequest = {
+                member_id: '11111111-1111-4111-8111-111111111111',
+                issue_date: '2026-05-01',
+                expiration_date: '2027-05-01',
+            };
+
+            const response = await app.inject({ method: 'POST', url: '/api/v1/medical-certificates', payload });
+
+            expect(response.statusCode).toBe(201);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toBeDefined();
+            expect(body.data.id).toBe('cert-1');
+            expect(body.data.member_id).toBe(payload.member_id);
+        });
+
+        it('debe retornar 400 si faltan campos requeridos', async () => {
+            const payload = {
+                member_id: '11111111-1111-4111-8111-111111111111',
+                expiration_date: '2027-05-01',
+            } as any;
+
+            const response = await app.inject({ method: 'POST', url: '/api/v1/medical-certificates', payload });
+
+            expect(response.statusCode).toBe(400);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('Faltan campos requeridos');
+        });
+    });
+
     describe('DELETE /api/v1/medical-certificates/:id', () => {
         it('debe retornar 204 al eliminar un certificado existente', async () => {
             const createResponse = await app.inject({
                 method: 'POST',
                 url: '/api/v1/medical-certificates',
                 payload: {
-                    member_id: '11111111-1111-1111-1111-111111111111',
+                    member_id: '11111111-1111-4111-8111-111111111111',
                     issue_date: '2026-05-01',
                     expiration_date: '2027-05-01',
                 },
@@ -117,7 +150,7 @@ describe('MedicalCertificate API Integration Tests', () => {
             // Insertamos un certificado que provocará fallo en el delete
             const failingCert = {
                 id: 'cert-fail',
-                member_id: '11111111-1111-1111-1111-111111111111',
+                member_id: '11111111-1111-4111-8111-111111111111',
                 issue_date: '2026-05-01',
                 expiration_date: '2027-05-01',
                 status: 'Active',
