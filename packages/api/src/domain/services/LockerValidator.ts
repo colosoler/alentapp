@@ -70,4 +70,19 @@ export class LockerValidator {
             throw new ConflictError('El número de locker ingresado ya se encuentra registrado');
         }
     }
+
+    validateForRent(locker: any | null): void {
+        // CA 1: Validar existencia del locker
+        if (!locker) {
+            throw new NotFoundError('El locker no existe en la base de datos');
+        }
+
+        // CA 2: Validar estados inválidos
+        if (locker.status === 'Maintenance') {
+            throw new BadRequestError('No se puede asignar un casillero en mantenimiento');
+        }
+        if (locker.status === 'Occupied') {
+            throw new ConflictError('El locker ya se encuentra ocupado');
+        }
+    }
 }
