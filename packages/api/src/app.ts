@@ -225,7 +225,7 @@ export function buildApp() {
     const createLockerUseCase = new CreateLockerUseCase(lockerRepo, lockerValidator);
     const sportController = new SportController(createSportUseCase, getSportsUseCase, getSportByIdUseCase, updateSportUseCase, updateSportEnrollmentCountUseCase, deleteSportUseCase);
     const getLockersUseCase = new GetLockersUseCase(lockerRepo);
-    const rentLockersUseCase = new RentLockerUseCase(lockerRepo, memberRepo);
+    const rentLockersUseCase = new RentLockerUseCase(lockerRepo, memberRepo, lockerValidator);
     const releaseLockersUseCase = new ReleaseLockerUseCase(lockerRepo);
     const updateLockerUseCase = new UpdateLockerUseCase(lockerRepo);
     const deleteLockerUseCase = new DeleteLockerUseCase(lockerRepo);
