@@ -82,6 +82,34 @@ describe('MedicalCertificate API Integration Tests', () => {
             const body = JSON.parse(response.payload);
             expect(body.error).toBe('Faltan campos requeridos');
         });
+
+        it('debe retornar 400 si el id es invalido', async () => {
+            const response = await app.inject({ method: 'DELETE', url: '/api/v1/medical-certificates/bad-id' });
+            expect(response.statusCode).toBe(400);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El id del certificado no es valido');
+        });
+
+        it('debe retornar 500 si ocurre un error al eliminar en el repositorio', async () => {
+            // Insertamos un certificado que provocará fallo en el delete
+            const failingCert = {
+                id: 'cert-fail',
+                member_id: '11111111-1111-4111-8111-111111111111',
+                issue_date: '2026-05-01',
+                expiration_date: '2027-05-01',
+                status: 'Active',
+                file_url: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            certificateStore.set(failingCert.id, failingCert);
+
+            const response = await app.inject({ method: 'DELETE', url: `/api/v1/medical-certificates/${failingCert.id}` });
+
+            expect(response.statusCode).toBe(500);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('Error interno, reintente mas tarde');
+        });
     });
 });
 
