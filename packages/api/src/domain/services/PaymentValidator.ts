@@ -10,7 +10,7 @@ export class PaymentValidator {
             typeof data.dueDate !== 'string' ||
             typeof data.memberId !== 'string'
         ) {
-            throw new Error('Faltan campos requeridos');
+            throw new Error('Faltan campos requeridos o son inválidos');
         }
     }
 

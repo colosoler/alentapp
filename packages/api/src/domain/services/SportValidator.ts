@@ -42,11 +42,26 @@ export class SportValidator {
         if (typeof additionalPrice !== 'number' || Number.isNaN(additionalPrice)) {
             throw new Error('El precio adicional es obligatorio');
         }
+
+        if (additionalPrice < 0) {
+            throw new Error('El precio adicional no puede ser negativo');
+        }
     }
 
     validateRequiresMedicalCertificate(requiresMedicalCertificate: unknown): void {
         if (typeof requiresMedicalCertificate !== 'boolean') {
             throw new Error('Faltan campos requeridos');
         }
+    }
+
+    validateSportId(id: string): void {
+        if (!this.isValidUuid(id)) {
+            throw new Error('El id informado no es valido');
+        }
+    }
+
+    private isValidUuid(id: string): boolean {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(id);
     }
 }

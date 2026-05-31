@@ -25,4 +25,39 @@ describe('LoanValidator', () => {
             ).toThrow('Faltan campos requeridos');
         });
     });
+
+    // === UPDATE LOAN STATUS ===
+
+    describe('validateItemName - Update Loan Status', () => {
+        it('debe lanzar error si el nombre del item esta vacio', () => {
+            expect(() => validator.validateItemName('   ')).toThrow(
+                'El nombre del ítem es obligatorio',
+            );
+        });
+    });
+
+    describe('validateMemberId - Update Loan Status', () => {
+        it('debe lanzar error si el member_id no es un UUID valido', () => {
+            expect(() => validator.validateMemberId('invalid-id')).toThrow(
+                'El id del socio no es válido',
+            );
+        });
+    });
+
+    // === LIST LOANS ===
+
+    describe('validateDueDate - List Loans', () => {
+        it('debe lanzar error si la fecha de devolucion no es una fecha valida', () => {
+            expect(() => validator.validateDueDate('fecha-invalida', new Date())).toThrow(
+                'La fecha de devolución no es válida',
+            );
+        });
+
+        it('debe lanzar error si la fecha de devolucion es anterior a la de prestamo', () => {
+            const loanDate = new Date('2026-06-01');
+            expect(() => validator.validateDueDate('2026-05-01', loanDate)).toThrow(
+                'La fecha de devolución debe ser posterior a la de inicio',
+            );
+        });
+    });
 });

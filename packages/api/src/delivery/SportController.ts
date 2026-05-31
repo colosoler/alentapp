@@ -34,7 +34,8 @@ export class SportController {
                 error.message.includes('El nombre del deporte es obligatorio') ||
                 error.message.includes('La descripcion del deporte es obligatoria') ||
                 error.message.includes('La capacidad maxima debe ser mayor a cero') ||
-                error.message.includes('El precio adicional es obligatorio')
+                error.message.includes('El precio adicional es obligatorio') ||
+                error.message.includes('El precio adicional no puede ser negativo')
             ) {
                 return reply.status(400).send({ error: error.message });
             }
@@ -67,6 +68,10 @@ export class SportController {
             const sport = await this.getSportByIdUseCase.execute(request.params.id);
             return reply.status(200).send({ data: sport });
         } catch (error: any) {
+            if (error.message.includes('El id informado no es valido')) {
+                return reply.status(400).send({ error: error.message });
+            }
+
             if (error.message.includes('El deporte no existe')) {
                 return reply.status(404).send({ error: error.message });
             }
@@ -154,6 +159,10 @@ export class SportController {
             await this.deleteSportUseCase.execute(request.params.id);
             return reply.status(204).send();
         } catch (error: any) {
+            if (error.message.includes('El id informado no es valido')) {
+                return reply.status(400).send({ error: error.message });
+            }
+
             if (error.message.includes('El deporte no existe')) {
                 return reply.status(404).send({ error: error.message });
             }

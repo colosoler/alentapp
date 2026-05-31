@@ -108,6 +108,8 @@ vi.mock('../infrastructure/PostgresLoanRepository.js', () => {
     };
 });
 
+// === CREATE LOAN ===
+
 describe('Loan API Integration Tests - Create', () => {
     let app: FastifyInstance;
 
@@ -161,6 +163,131 @@ describe('Loan API Integration Tests - Create', () => {
             const body = JSON.parse(response.payload);
             expect(body.error).toBe('Los socios Cadetes tienen prohibido solicitar material');
             expect(createdLoans).toHaveLength(0);
+        });
+    });
+});
+
+// === UPDATE LOAN STATUS ===
+
+describe('Loan API Integration Tests - Update Status', () => {
+    let app: FastifyInstance;
+    let loanId: string;
+
+    const validPayload: CreateLoanRequest = {
+        member_id: MEMBER_ID,
+        item_name: 'Balon de futbol',
+        due_date: '2026-06-15',
+    };
+
+    beforeAll(async () => {
+        app = buildApp();
+        await app.ready();
+
+        createdLoans.length = 0;
+
+        const createResponse = await app.inject({
+            method: 'POST',
+            url: '/api/v1/equipment-loan',
+            payload: validPayload,
+        });
+        const body = JSON.parse(createResponse.payload);
+        loanId = body.data.id;
+    });
+
+    afterAll(async () => {
+        await app.close();
+    });
+
+    describe('PATCH /api/v1/equipment-loan/:id/status', () => {
+        beforeEach(() => {
+            const loan = createdLoans.find((l) => l.id === loanId);
+            if (loan) loan.status = 'Loaned';
+        });
+
+        it('debe retornar 200 y actualizar el estado a Returned', async () => {
+            const response = await app.inject({
+                method: 'PATCH',
+                url: `/api/v1/equipment-loan/${loanId}/status`,
+                payload: { status: 'Returned' },
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data.status).toBe('Returned');
+        });
+
+        it('debe retornar 400 si el prestamo ya fue devuelto', async () => {
+            await app.inject({
+                method: 'PATCH',
+                url: `/api/v1/equipment-loan/${loanId}/status`,
+                payload: { status: 'Returned' },
+            });
+
+            const response = await app.inject({
+                method: 'PATCH',
+                url: `/api/v1/equipment-loan/${loanId}/status`,
+                payload: { status: 'Returned' },
+            });
+
+            expect(response.statusCode).toBe(400);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El préstamo ya fue marcado como devuelto anteriormente');
+        });
+    });
+});
+
+// === LIST LOANS ===
+
+describe('Loan API Integration Tests - List', () => {
+    let app: FastifyInstance;
+
+    const validPayload: CreateLoanRequest = {
+        member_id: MEMBER_ID,
+        item_name: 'Balon de futbol',
+        due_date: '2026-06-15',
+    };
+
+    beforeAll(async () => {
+        app = buildApp();
+        await app.ready();
+
+        createdLoans.length = 0;
+
+        await app.inject({
+            method: 'POST',
+            url: '/api/v1/equipment-loan',
+            payload: validPayload,
+        });
+    });
+
+    afterAll(async () => {
+        await app.close();
+    });
+
+    describe('GET /api/v1/equipment-loan', () => {
+        it('debe retornar 200 y la lista de prestamos', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/equipment-loan',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(Array.isArray(body.data)).toBe(true);
+            expect(body.data.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it('debe retornar 200 con array vacio si no hay prestamos', async () => {
+            createdLoans.length = 0;
+
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/equipment-loan',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.data).toEqual([]);
         });
     });
 });

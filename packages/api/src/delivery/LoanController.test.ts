@@ -66,4 +66,82 @@ describe('LoanController', () => {
             });
         });
     });
+
+    // === UPDATE LOAN STATUS ===
+
+    describe('updateStatus - Update Loan Status', () => {
+        const mockRequest = {
+            params: { id: 'loan-1' },
+            body: { status: 'Returned' as const },
+        };
+
+        it('debe devolver status 200 y el prestamo actualizado si el cambio es exitoso', async () => {
+            const mockLoan: LoanDTO = {
+                id: 'loan-1',
+                member_id: '123e4567-e89b-12d3-a456-426614174000',
+                item_name: 'Balon de futbol',
+                loan_date: '2026-05-28T00:00:00.000Z',
+                due_date: '2026-06-15',
+                status: 'Returned',
+            };
+            mockUpdateStatusUseCase.execute.mockResolvedValueOnce(mockLoan);
+
+            await controller.updateStatus(mockRequest as any, mockReply as any);
+
+            expect(mockUpdateStatusUseCase.execute).toHaveBeenCalledWith('loan-1', { status: 'Returned' });
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: mockLoan });
+        });
+
+        it('debe devolver status 400 si el prestamo ya fue devuelto', async () => {
+            mockUpdateStatusUseCase.execute.mockRejectedValueOnce(
+                new Error('El préstamo ya fue marcado como devuelto anteriormente'),
+            );
+
+            await controller.updateStatus(mockRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(400);
+            expect(mockReply.send).toHaveBeenCalledWith({
+                error: 'El préstamo ya fue marcado como devuelto anteriormente',
+            });
+        });
+    });
+
+    // === LIST LOANS ===
+
+    describe('getAll - List Loans', () => {
+        const mockRequest = {
+            query: {},
+        };
+
+        it('debe devolver status 200 y la lista de prestamos', async () => {
+            const mockLoans = [
+                {
+                    id: 'loan-1',
+                    member_id: '123e4567-e89b-12d3-a456-426614174000',
+                    item_name: 'Balon de futbol',
+                    loan_date: '2026-05-28T00:00:00.000Z',
+                    due_date: '2026-06-15',
+                    status: 'Loaned',
+                    member: { name: 'Socio Existente' },
+                },
+            ];
+            mockGetAllUseCase.execute.mockResolvedValueOnce(mockLoans);
+
+            await controller.getAll(mockRequest as any, mockReply as any);
+
+            expect(mockGetAllUseCase.execute).toHaveBeenCalledWith({});
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: mockLoans });
+        });
+
+        it('debe devolver status 200 con array vacio si no hay prestamos', async () => {
+            mockGetAllUseCase.execute.mockResolvedValueOnce([]);
+
+            await controller.getAll(mockRequest as any, mockReply as any);
+
+            expect(mockReply.status).toHaveBeenCalledWith(200);
+            expect(mockReply.send).toHaveBeenCalledWith({ data: [] });
+        });
+    });
 });
