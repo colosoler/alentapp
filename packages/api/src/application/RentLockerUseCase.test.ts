@@ -2,15 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RentLockerUseCase } from './RentLockerUseCase.js';
 import { LockerRepository } from '../domain/LockerRepository.js';
 import { MemberRepository } from '../domain/MemberRepository.js';
-import { BadRequestError, ConflictError, NotFoundError } from '../domain/services/LockerValidator.js';
+import { LockerValidator, NotFoundError, ConflictError } from '../domain/services/LockerValidator.js';
 
 describe('RentLockerUseCase', () => {
     let mockLockerRepo: LockerRepository;
     let mockMemberRepo: MemberRepository;
+    let validator: LockerValidator;
     let useCase: RentLockerUseCase;
 
     beforeEach(() => {
-        // Mockeamos solo los métodos que el UseCase realmente utiliza
         mockLockerRepo = {
             findById: vi.fn(),
             updateRent: vi.fn(),
@@ -20,7 +20,10 @@ describe('RentLockerUseCase', () => {
             findById: vi.fn(),
         } as unknown as MemberRepository;
 
-        useCase = new RentLockerUseCase(mockLockerRepo, mockMemberRepo);
+        validator = new LockerValidator(mockLockerRepo);
+        vi.spyOn(validator, 'validateForRent');
+
+        useCase = new RentLockerUseCase(mockLockerRepo, mockMemberRepo, validator);
     });
 
     it('CA 1 - Debe lanzar NotFoundError si el socio no existe', async () => {
@@ -31,35 +34,19 @@ describe('RentLockerUseCase', () => {
         ).rejects.toThrow(NotFoundError);
     });
 
-    it('CA 1 - Debe lanzar NotFoundError si el locker no existe', async () => {
-        // simulamos que el socio existe, pero el locker no
+    it('Debe delegar la validación del estado del locker al LockerValidator', async () => {
+        const mockLocker = { id: 'locker-123', status: 'Available' };
         mockMemberRepo.findById = vi.fn().mockResolvedValue({ id: 'member-999' });
-        mockLockerRepo.findById = vi.fn().mockResolvedValue(null);
+        mockLockerRepo.findById = vi.fn().mockResolvedValue(mockLocker);
+        mockLockerRepo.updateRent = vi.fn().mockResolvedValue({ ...mockLocker, status: 'Occupied' });
 
-        await expect(
-            useCase.execute('locker-invalid', { memberId: 'member-999' })
-        ).rejects.toThrow(NotFoundError);
+        await useCase.execute('locker-123', { memberId: 'member-999' });
+
+        // Verificamos que se haya llamado al método que acabamos de crear
+        expect(validator.validateForRent).toHaveBeenCalledWith(mockLocker);
     });
 
-    it('CA 2 - Debe lanzar BadRequestError si el locker está en Maintenance', async () => {
-        mockMemberRepo.findById = vi.fn().mockResolvedValue({ id: 'member-999' });
-        mockLockerRepo.findById = vi.fn().mockResolvedValue({ id: 'locker-123', status: 'Maintenance' });
-
-        await expect(
-            useCase.execute('locker-123', { memberId: 'member-999' })
-        ).rejects.toThrow(BadRequestError);
-    });
-
-    it('CA 2 - Debe lanzar ConflictError si el locker ya está Occupied', async () => {
-        mockMemberRepo.findById = vi.fn().mockResolvedValue({ id: 'member-999' });
-        mockLockerRepo.findById = vi.fn().mockResolvedValue({ id: 'locker-123', status: 'Occupied' });
-
-        await expect(
-            useCase.execute('locker-123', { memberId: 'member-999' })
-        ).rejects.toThrow(ConflictError);
-    });
-
-    it('CA 3 - Debe alquilar el locker exitosamente si está Available', async () => {
+    it('CA 3 - Debe alquilar el locker exitosamente llamando al repositorio', async () => {
         mockMemberRepo.findById = vi.fn().mockResolvedValue({ id: 'member-999' });
         mockLockerRepo.findById = vi.fn().mockResolvedValue({ id: 'locker-123', status: 'Available' });
         

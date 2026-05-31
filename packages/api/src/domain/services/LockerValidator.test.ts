@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { LockerValidator, ConflictError, BadRequestError } from './LockerValidator.js';
+import { LockerValidator, ConflictError, BadRequestError, NotFoundError } from './LockerValidator.js';
 import { LockerRepository } from '../LockerRepository.js';
 
 describe('LockerValidator', () => {
@@ -50,4 +50,24 @@ describe('LockerValidator', () => {
             validator.validateForCreation(14, '      ')
         ).rejects.toThrow(BadRequestError);
     });
+
+    describe('validateForRent', () => {
+        it('CA 1 - Debe lanzar NotFoundError si el locker es null (no existe)', () => {
+            expect(() => validator.validateForRent(null)).toThrow(NotFoundError);
+        });
+
+        it('CA 2 - Debe lanzar BadRequestError si el locker está en Maintenance', () => {
+            expect(() => validator.validateForRent({ status: 'Maintenance' })).toThrow(BadRequestError);
+        });
+
+        it('CA 2 - Debe lanzar ConflictError si el locker está Occupied', () => {
+            expect(() => validator.validateForRent({ status: 'Occupied' })).toThrow(ConflictError);
+        });
+
+        it('No debe lanzar ningún error si el locker está Available', () => {
+            expect(() => validator.validateForRent({ status: 'Available' })).not.toThrow();
+        });
+        
+    });
 });
+
