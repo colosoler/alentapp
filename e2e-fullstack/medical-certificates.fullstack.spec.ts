@@ -52,5 +52,11 @@ test.describe('Medical Certificates Full-Stack E2E', () => {
     await expect(page.getByText(memberLabel)).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Activo')).toBeVisible();
     await expect(page.getByText('Certificado vigente')).toBeVisible();
+
+
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: /Eliminar certificado/i }).first().click();
+
+    await expect(page.getByText('No se encontraron certificados médicos.')).toBeVisible({ timeout: 10000 });
   });
 });
