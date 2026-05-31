@@ -1,0 +1,28 @@
+{
+  "$schema": "../../node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "mutate": [
+    "src/application/*UseCase.ts",
+    "!src/application/*Member*UseCase.ts",
+    "!src/application/*.test.ts"
+  ],
+  "testFiles": [
+    "src/application/CreateLoanUseCase.test.ts",
+    "src/application/CreateLockerUseCase.test.ts",
+    "src/application/CreateMedicalCertificateUseCase.test.ts",
+    "src/application/CreatePaymentUseCase.test.ts",
+    "src/application/CreateSportUseCase.test.ts",
+    "src/application/DeleteDisciplineUseCase.test.ts",
+    "src/application/DeleteSportUseCase.test.ts",
+    "src/application/GetDisciplineUseCase.test.ts",
+    "src/application/GetLoansUseCase.test.ts",
+    "src/application/GetSportByIdUseCase.test.ts",
+    "src/application/GetSportsUseCase.test.ts",
+    "src/application/NewDisciplineUseCase.test.ts",
+    "src/application/UpdateDisciplineUseCase.test.ts",
+    "src/application/UpdateLoanStatusUseCase.test.ts",
+    "src/application/UpdateSportUseCase.test.ts"
+  ],
+  "reporters": ["progress", "clear-text", "html"]
+}
