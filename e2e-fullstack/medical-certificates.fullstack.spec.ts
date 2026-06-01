@@ -41,7 +41,7 @@ test.describe('Medical Certificates Full-Stack E2E', () => {
     await expect(page.getByText('Nuevo Certificado Médico')).toBeVisible();
 
     await page.getByText('Seleccione un socio').click();
-    await page.getByText(memberLabel).click();
+    await page.getByRole('option', { name: memberLabel }).click();
 
     await page.getByLabel(/Fecha de emisión/i).fill(issueDate);
     await page.getByLabel(/Fecha de vencimiento/i).fill(expirationDate);
@@ -49,8 +49,15 @@ test.describe('Medical Certificates Full-Stack E2E', () => {
     await page.getByRole('button', { name: 'Crear Certificado' }).click();
 
     await expect(page.getByRole('button', { name: 'Crear Certificado' })).toBeHidden();
-    await expect(page.getByText(memberLabel)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Activo')).toBeVisible();
-    await expect(page.getByText('Certificado vigente')).toBeVisible();
+    const createdCertificateRow = page.getByRole('row', { name: new RegExp(memberLabel) });
+    await expect(createdCertificateRow).toBeVisible({ timeout: 10000 });
+    await expect(createdCertificateRow).toContainText('Activo');
+    await expect(createdCertificateRow).toContainText('Certificado vigente');
+
+
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: /Eliminar certificado/i }).first().click();
+
+    await expect(page.getByText('No se encontraron certificados médicos.')).toBeVisible({ timeout: 10000 });
   });
 });

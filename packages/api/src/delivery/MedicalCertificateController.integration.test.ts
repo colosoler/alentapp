@@ -9,6 +9,10 @@ const { previousDatabaseUrl } = vi.hoisted(() => {
     return { previousDatabaseUrl };
 });
 
+// Spies y almacén en memoria para los mocks
+const deleteCertificateMock = vi.fn();
+const certificateStore = new Map<string, any>();
+
 // Mock repositories para probar la integración sin tocar la DB real
 vi.mock('../infrastructure/PostgresMemberRepository.js', () => {
     return {
@@ -26,12 +30,31 @@ vi.mock('../infrastructure/PostgresMedicalCertificateRepository.js', () => {
     return {
         PostgresMedicalCertificateRepository: class {
             async invalidateActiveByMember() { return; }
-            async create(data: any) { return { id: 'cert-1', ...data, created_at: new Date().toISOString() }; }
-            async findAll() { return []; }
-            async findById() { return null; }
-            async findByMemberId() { return []; }
-            async update() { return null; }
-            async delete() { return; }
+            async create(data: any) {
+                const id = `cert-${Math.random().toString(36).slice(2, 9)}`;
+                const cert = { id, ...data, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), status: 'Active' };
+                certificateStore.set(id, cert);
+                return cert;
+            }
+            async findAll() { return Array.from(certificateStore.values()); }
+            async findById(id: string) { return certificateStore.get(id) ?? null; }
+            async findByMemberId(memberId: string) { return Array.from(certificateStore.values()).filter(c => c.member_id === memberId); }
+            async update(id: string, data: any) {
+                const existing = certificateStore.get(id);
+                if (!existing) throw new Error('El certificado no existe');
+                const updated = { ...existing, ...data, updated_at: new Date().toISOString() };
+                certificateStore.set(id, updated);
+                return updated;
+            }
+            async delete(id: string) {
+                // provocar fallo para id concreto
+                if (id === 'cert-fail') {
+                    throw new Error('DB delete failed');
+                }
+                deleteCertificateMock(id);
+                certificateStore.delete(id);
+                return;
+            }
         }
     };
 });
@@ -64,7 +87,7 @@ describe('MedicalCertificate API Integration Tests', () => {
             expect(response.statusCode).toBe(201);
             const body = JSON.parse(response.payload);
             expect(body.data).toBeDefined();
-            expect(body.data.id).toBe('cert-1');
+            expect(body.data.id).toBeDefined();
             expect(body.data.member_id).toBe(payload.member_id);
         });
 
@@ -81,6 +104,72 @@ describe('MedicalCertificate API Integration Tests', () => {
             expect(response.statusCode).toBe(400);
             const body = JSON.parse(response.payload);
             expect(body.error).toBe('Faltan campos requeridos');
+        });
+
+    });
+
+    describe('DELETE /api/v1/medical-certificates/:id', () => {
+        it('debe retornar 204 al eliminar un certificado existente', async () => {
+            const createResponse = await app.inject({
+                method: 'POST',
+                url: '/api/v1/medical-certificates',
+                payload: {
+                    member_id: '11111111-1111-4111-8111-111111111111',
+                    issue_date: '2026-05-01',
+                    expiration_date: '2027-05-01',
+                },
+            });
+
+            expect(createResponse.statusCode).toBe(201);
+            const createdBody = JSON.parse(createResponse.payload);
+
+            const deleteResponse = await app.inject({
+                method: 'DELETE',
+                url: `/api/v1/medical-certificates/${createdBody.data.id}`,
+            });
+
+            expect(deleteResponse.statusCode).toBe(204);
+            expect(deleteResponse.payload).toBe('');
+            expect(deleteCertificateMock).toHaveBeenCalledWith(createdBody.data.id);
+        });
+
+        it('debe retornar 404 si el certificado no existe', async () => {
+            const response = await app.inject({
+                method: 'DELETE',
+                url: '/api/v1/medical-certificates/cert-inexistente',
+            });
+
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El certificado no existe');
+        });
+
+        it('debe retornar 404 si el id es invalido o no existe', async () => {
+            const response = await app.inject({ method: 'DELETE', url: '/api/v1/medical-certificates/bad-id' });
+            expect(response.statusCode).toBe(404);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('El certificado no existe');
+        });
+
+        it('debe retornar 500 si ocurre un error al eliminar en el repositorio', async () => {
+            // Insertamos un certificado que provocará fallo en el delete
+            const failingCert = {
+                id: 'cert-fail',
+                member_id: '11111111-1111-4111-8111-111111111111',
+                issue_date: '2026-05-01',
+                expiration_date: '2027-05-01',
+                status: 'Active',
+                file_url: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            certificateStore.set(failingCert.id, failingCert);
+
+            const response = await app.inject({ method: 'DELETE', url: `/api/v1/medical-certificates/${failingCert.id}` });
+
+            expect(response.statusCode).toBe(500);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('Error interno, reintente mas tarde');
         });
     });
 });
