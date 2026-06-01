@@ -23,7 +23,9 @@
     "src/application/UpdateDisciplineUseCase.test.ts",
     "src/application/UpdateLoanStatusUseCase.test.ts",
     "src/application/UpdateSportUseCase.test.ts",
-    "src/application/UpdateSportEnrollmentCountUseCase.test.ts"
+    "src/application/UpdateSportEnrollmentCountUseCase.test.ts",
+    "src/application/UpdatePaymentUseCase.test.ts",
+    "src/application/CancelPaymentUseCase.test.ts"
   ],
   "reporters": ["progress", "clear-text", "html"]
 }
