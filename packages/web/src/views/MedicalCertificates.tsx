@@ -67,14 +67,6 @@ const statusLabels: Record<MedicalCertificateDTO["status"], string> = {
   Inactive: "Inactivo",
 };
 
-const statusCollection = createListCollection({
-  items: [
-    { label: "Todos", value: "" },
-    { label: "Activo", value: "Active" },
-    { label: "Inactivo", value: "Inactive" },
-  ],
-});
-
 type CertificateFormState = {
   member_id: string;
   issue_date: string;
@@ -104,8 +96,8 @@ export function MedicalCertificatesView() {
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [memberFilter, setMemberFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [memberFilter] = useState("");
+  const [statusFilter] = useState("");
   const [searchById, setSearchById] = useState("");
   const [searchedCertificate, setSearchedCertificate] = useState<MedicalCertificateDTO | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -161,9 +153,6 @@ export function MedicalCertificatesView() {
   }, [certs, memberFilter, statusFilter]);
 
   const totalActiveCertificates = certs.filter((certificate) => certificate.status === "Active").length;
-  const totalMembersWithActiveCertificate = new Set(
-    certs.filter((certificate) => certificate.status === "Active").map((certificate) => certificate.member_id),
-  ).size;
 
   const selectedMember = members.find((member) => member.id === memberLookupId) || null;
 

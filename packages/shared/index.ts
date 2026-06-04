@@ -236,6 +236,12 @@ export interface CreateLockerRequest {
   status?: 'Available' | 'Maintenance' // no puede ser occupied en la creacion
 }
 
+export interface UpdateLockerRequest {
+  number?: number;
+  location?: string;
+  status?: LockerStatus;
+}
+
 export interface LockerItemResponse {
   id: string;
   number: number;
