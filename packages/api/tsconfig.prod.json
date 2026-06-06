@@ -1,0 +1,19 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "../../packages",
+        "outDir": "dist/.compiled",
+        "declaration": false,
+        "sourceMap": false,
+        "tsBuildInfoFile": "dist/.compiled/.tsbuildinfo"
+    },
+    "include": [
+        "src/**/*.ts",
+        "../shared/index.ts"
+    ],
+    "exclude": [
+        "src/**/*.test.ts",
+        "src/**/*.e2e.test.ts",
+        "src/**/*.integration.test.ts"
+    ]
+}
