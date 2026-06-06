@@ -215,7 +215,7 @@ export function MedicalCertificatesView() {
 
   const handleViewFile = (certificate: MedicalCertificateDTO) => {
     if (!certificate.file_url) return;
-    const baseApi = (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+    const baseApi = (import.meta.env.VITE_API_URL || '');
     const url = certificate.file_url.startsWith('http') ? certificate.file_url : `${baseApi}${certificate.file_url}`;
     window.open(url, '_blank');
   };
