@@ -7,6 +7,7 @@ import { GetMemberMedicalCertificateStatusUseCase } from '../application/GetMemb
 import { UpdateMedicalCertificateUseCase } from '../application/UpdateMedicalCertificateUseCase.js';
 import { DeleteMedicalCertificateUseCase } from '../application/DeleteMedicalCertificateUseCase.js';
 import { CreateMedicalCertificateRequest, UpdateMedicalCertificateRequest } from '@alentapp/shared';
+import { requestCounter, errorCounter, requestDuration, incrementActiveRequests, decrementActiveRequests } from '../infrastructure/telemetry.js';
 
 export class MedicalCertificateController {
     constructor(
@@ -20,6 +21,9 @@ export class MedicalCertificateController {
     ) {}
 
     async create(request: FastifyRequest<{ Body: CreateMedicalCertificateRequest }>, reply: FastifyReply) {
+        const start = Date.now();
+        const method = request.method;
+        const route = request.url?.split('?')[0] ?? 'unknown';
         try {
             let file_url: string | undefined;
             try {
@@ -43,7 +47,6 @@ export class MedicalCertificateController {
                             const { saveMedicalCertificateFile } = await import('../infrastructure/FileStorage.js');
                             file_url = await saveMedicalCertificateFile(buffer, filename || 'file.pdf');
                         } else {
-                            // field
                             multipartFields[part.fieldname] = part.value;
                         }
                     }
@@ -54,26 +57,39 @@ export class MedicalCertificateController {
                 if (file_url) payload.file_url = file_url;
 
                 const cert = await this.createUseCase.execute(payload);
+                requestCounter.add(1, { method, route, status: 201 });
                 return reply.status(201).send({ data: cert });
             } catch (err: any) {
-                // if validation error, let outer catch handle it
                 throw err;
             }
         } catch (error: any) {
-            return this.handleError(error, reply);
+            return this.handleError(error, reply, method, route);
+        } finally {
+            requestDuration.record(Date.now() - start, { method, route });
         }
     }
 
     async getAll(_request: FastifyRequest, reply: FastifyReply) {
+        const start = Date.now();
+        const method = _request.method;
+        const route = _request.url?.split('?')[0] ?? 'unknown';
+        incrementActiveRequests();
         try {
             const certs = await this.getUseCase.execute();
+            requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: certs });
         } catch (error: any) {
-            return this.handleError(error, reply);
+            return this.handleError(error, reply, method, route);
+        } finally {
+            requestDuration.record(Date.now() - start, { method, route });
+            decrementActiveRequests();
         }
     }
 
     async update(request: FastifyRequest<{ Params: { id: string }; Body: UpdateMedicalCertificateRequest }>, reply: FastifyReply) {
+        const start = Date.now();
+        const method = request.method;
+        const route = request.url?.split('?')[0] ?? 'unknown';
         try {
             let file_url: string | undefined;
             try {
@@ -100,52 +116,86 @@ export class MedicalCertificateController {
                 if (file_url) payload.file_url = file_url;
 
                 const cert = await this.updateUseCase.execute(request.params.id, payload);
+                requestCounter.add(1, { method, route, status: 200 });
                 return reply.status(200).send({ data: cert });
             } catch (err: any) {
                 throw err;
             }
         } catch (error: any) {
-            return this.handleError(error, reply);
+            return this.handleError(error, reply, method, route);
+        } finally {
+            requestDuration.record(Date.now() - start, { method, route });
         }
     }
 
     async delete(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        const start = Date.now();
+        const method = request.method;
+        const route = request.url?.split('?')[0] ?? 'unknown';
         try {
             await this.deleteUseCase.execute(request.params.id);
+            requestCounter.add(1, { method, route, status: 204 });
             return reply.status(204).send();
         } catch (error: any) {
-            return this.handleError(error, reply);
+            return this.handleError(error, reply, method, route);
+        } finally {
+            requestDuration.record(Date.now() - start, { method, route });
         }
     }
 
     async getById(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        const start = Date.now();
+        const method = request.method;
+        const route = request.url?.split('?')[0] ?? 'unknown';
+        incrementActiveRequests();
         try {
             const cert = await this.getByIdUseCase.execute(request.params.id);
+            requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: cert });
         } catch (error: any) {
-            return this.handleError(error, reply);
+            return this.handleError(error, reply, method, route);
+        } finally {
+            requestDuration.record(Date.now() - start, { method, route });
+            decrementActiveRequests();
         }
     }
 
     async getByMember(request: FastifyRequest<{ Params: { memberId: string } }>, reply: FastifyReply) {
+        const start = Date.now();
+        const method = request.method;
+        const route = request.url?.split('?')[0] ?? 'unknown';
+        incrementActiveRequests();
         try {
             const certs = await this.getByMemberUseCase.execute(request.params.memberId);
+            requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: certs });
         } catch (error: any) {
-            return this.handleError(error, reply);
+            return this.handleError(error, reply, method, route);
+        } finally {
+            requestDuration.record(Date.now() - start, { method, route });
+            decrementActiveRequests();
         }
     }
 
     async getMemberStatus(request: FastifyRequest<{ Params: { memberId: string } }>, reply: FastifyReply) {
+        const start = Date.now();
+        const method = request.method;
+        const route = request.url?.split('?')[0] ?? 'unknown';
+        incrementActiveRequests();
         try {
             const status = await this.getMemberStatusUseCase.execute(request.params.memberId);
+            requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: status });
         } catch (error: any) {
-            return this.handleError(error, reply);
+            return this.handleError(error, reply, method, route);
+        } finally {
+            requestDuration.record(Date.now() - start, { method, route });
+            decrementActiveRequests();
         }
     }
 
-    private handleError(error: Error, reply: FastifyReply) {
+    private handleError(error: Error, reply: FastifyReply, method: string, route: string) {
+        let status = 500;
         if (
             error.message.includes('Faltan campos requeridos') ||
             error.message.includes('no es valido') ||
@@ -153,16 +203,13 @@ export class MedicalCertificateController {
             error.message.includes('posterior') ||
             error.message.includes('estado')
         ) {
-            return reply.status(400).send({ error: error.message });
+            status = 400;
+        } else if (error.message.includes('no existe')) {
+            status = 404;
         }
-
-        if (error.message.includes('no existe')) {
-            return reply.status(404).send({ error: error.message });
-        }
-
-        return reply.status(500).send({ error: 'Error interno, reintente mas tarde' });
+        errorCounter.add(1, { method, route, status });
+        return reply.status(status).send({ error: status === 500 ? 'Error interno, reintente mas tarde' : error.message });
     }
 }
 
 export default MedicalCertificateController;
-
