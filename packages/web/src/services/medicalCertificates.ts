@@ -1,11 +1,9 @@
 import type {
-  CreateMedicalCertificateRequest,
   MedicalCertificateDTO,
   MemberMedicalCertificateStatusResponse,
-  UpdateMedicalCertificateRequest,
 } from '@alentapp/shared';
 
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000') + '/api/v1';
+import { API_URL } from '../config';
 
 const fetchAllCertificates = async (): Promise<MedicalCertificateDTO[]> => {
   const response = await fetch(`${API_URL}/medical-certificates`);
