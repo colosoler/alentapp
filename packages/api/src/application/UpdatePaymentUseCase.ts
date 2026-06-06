@@ -12,7 +12,9 @@ export class UpdatePaymentUseCase {
         }
 
         if (data.status !== undefined) {
-            if (data.status === 'Canceled') {
+            const requestedStatus = data.status as string;
+
+            if (requestedStatus === 'Canceled') {
                 throw new Error('Use el endpoint de cancelación');
             }
 
@@ -20,8 +22,8 @@ export class UpdatePaymentUseCase {
                 throw new Error('No se puede pagar un pago cancelado');
             }
 
-            if (existingPayment.status === 'Paid' && data.status === 'Paid') {
-            } else if (existingPayment.status !== 'Pending' && data.status === 'Paid') {
+            if (existingPayment.status === 'Paid' && requestedStatus === 'Paid') {
+            } else if (existingPayment.status !== 'Pending' && requestedStatus === 'Paid') {
                 throw new Error('Solo se pueden marcar como pagados los pagos en estado Pendiente');
             }
         }
