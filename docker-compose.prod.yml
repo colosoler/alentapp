@@ -1,0 +1,151 @@
+# docker-compose.prod.yml
+# Entorno PRODUCTIVO de AlentApp (single-host).
+#
+# Diferencias con docker-compose.yml (desarrollo):
+#   - Ejecuta imagenes compiladas (Dockerfile.prod), sin bind-mount del codigo fuente ni hot-reload.
+#   - La base de datos NO publica puerto al host (solo accesible por la red interna).
+#   - Seguridad reforzada: usuario no-root (definido en el Dockerfile), filesystem read-only,
+#     capabilities minimas y no-new-privileges.
+#   - Healthchecks, limites de recursos y rotacion de logs en todos los servicios.
+#   - Secretos cargados desde .env (no hardcodeados).
+#
+# Uso:
+#   1. Copiar .env.example a .env y completar las credenciales reales.
+#   2. docker compose -f docker-compose.prod.yml up -d --build
+#   3. docker compose -f docker-compose.prod.yml ps   (verificar que esten "healthy")
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: alentapp-db
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    networks:
+      - alentapp_prod_net
+    # La DB no expone puertos al host: solo la API la alcanza por el DNS interno "db".
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 1G
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile.prod
+    image: alentapp-api:prod
+    container_name: alentapp-api
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # DATABASE_URL y demas secretos se inyectan desde .env via env_file
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - alentapp_prod_net
+    # La API no publica puerto al host: el frontend (nginx) la proxyea por la red interna.
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      # /app/uploads debe ser escribible: la API crea esta carpeta al arrancar
+      # (fs.mkdirSync en app.ts) y guarda archivos subidos. Con read_only:true en
+      # el resto del filesystem, este volumen es la unica ruta de escritura persistente.
+      - uploads_prod:/app/uploads
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/health || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 512M
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile.prod
+    image: alentapp-web:prod
+    container_name: alentapp-web
+    ports:
+      # 8080 en el host para validacion local (en un servidor real seria 80:80 / 443:443)
+      - '8080:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - alentapp_prod_net
+    read_only: true
+    tmpfs:
+      # nginx necesita escribir cache, pid y temporales; el resto del FS es read-only.
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      # nginx (master root) bindea el puerto 80 (<1024) y baja privilegios a sus workers.
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/ || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+volumes:
+  pgdata_prod:
+  uploads_prod:
+
+networks:
+  alentapp_prod_net:
+    driver: bridge
