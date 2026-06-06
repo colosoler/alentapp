@@ -39,4 +39,19 @@ export function createREDMetrics(meter: Meter) {
 const { requestCounter, errorCounter, requestDuration } = createREDMetrics(meter);
 
 export { requestCounter, errorCounter, requestDuration };
+
+let activeRequests = 0;
+
+export function incrementActiveRequests() { activeRequests++; }
+
+export function decrementActiveRequests() { activeRequests--; }
+
+meter.createObservableGauge('http.requests.active', {
+	description: 'Requests concurrentes',
+}).addCallback(result => result.observe(activeRequests));
+
+meter.createObservableGauge('process.memory.usage', {
+	description: 'Memoria del proceso en bytes',
+}).addCallback(result => result.observe(process.memoryUsage().rss));
+
 export { sdk, meter, prometheusExporter };
