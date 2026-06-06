@@ -13,6 +13,11 @@ playwright-report-fullstack
 selenium-debug.log
 
 
+# Variables de entorno (secretos) - no versionar
+.env
+.env.*
+!.env.example
+
 # test
 test/test-report.json
 
