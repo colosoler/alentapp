@@ -102,6 +102,10 @@ export function buildApp() {
         prefix: '/uploads/',
     });
 
+    server.get('/health', async (req, rep) => {
+        rep.status(200).send({ status: 'ok' });
+    });
+
     const memberRepo = new PostgresMemberRepository();
     const memberValidator = new MemberValidator(memberRepo);
     const disciplineRepo = new PostgresDisciplineRepository();
@@ -390,7 +394,7 @@ export function buildApp() {
 }
 
 // Solo iniciar el servidor si el script se ejecuta directamente (no cuando es importado por vitest)
-if (process.argv[1] && process.argv[1].endsWith('app.ts')) {
+if (process.argv[1] && /app\.(ts|js)$/.test(process.argv[1])) {
     const server = buildApp();
     const port = parseInt(process.env.PORT || '3000', 10);
 
