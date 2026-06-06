@@ -99,12 +99,6 @@ export class PostgresMedicalCertificateRepository implements MedicalCertificateR
         return this.mapToDTO(cert as DBMedicalCertificate);
     }
 
-    async findById(id: string): Promise<MedicalCertificateDTO | null> {
-        const cert = await prisma.medicalCertificate.findUnique({ where: { id } });
-        if (!cert) return null;
-        return this.mapToDTO(cert as DBMedicalCertificate);
-    }
-
     async delete(id: string): Promise<void> {
         const cert = await prisma.medicalCertificate.findUnique({ where: { id } });
         if (cert && (cert as any).file_url) {
