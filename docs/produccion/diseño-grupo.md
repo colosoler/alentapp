@@ -1,7 +1,7 @@
 # Actividad 4 - Fase 2: Especificar y diseñar
 
 **Proyecto:** AlentApp  
-**Seccion:** 2.1. Diseño de la infraestructura Docker  
+**Secciones:** 2.1. Diseño de la infraestructura Docker y 2.2. Diseño de la observabilidad  
 **Fecha:** 03/06/2026
 
 ---
@@ -162,6 +162,53 @@ Headers recomendados:
 - `X-Frame-Options: DENY`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Content-Security-Policy` inicial conservadora y ajustable segun assets externos reales.
+
+#### Diseño conceptual de `nginx.conf`
+
+```nginx
+server {
+    listen 80;
+    server_name _;
+
+    # Gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+    gzip_min_length 1000;
+
+    # Raiz de la SPA
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Assets versionados con cache largo
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Reverse proxy hacia la API
+    location /api/ {
+        proxy_pass http://api:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+
+    # Fallback SPA para React Router
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+
+    # Security headers
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options DENY;
+    add_header Referrer-Policy strict-origin-when-cross-origin;
+}
+```
 
 ### Requisitos no funcionales
 
@@ -391,8 +438,49 @@ services:
           cpus: "0.25"
           memory: 128M
 
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - alentapp_prod_net
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - alentapp_prod_net
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
 volumes:
   pgdata_prod:
+  prometheus_data:
+  grafana_data:
 
 networks:
   alentapp_prod_net:
@@ -425,6 +513,173 @@ Si algun archivo de `docs` o `uploads` fuera necesario en runtime, debe copiarse
 
 ---
 
+## 2.2. Diseño de la observabilidad
+
+### Proposito
+
+Especificar cómo integrar OpenTelemetry en la API para capturar métricas RED, exponerlas vía Prometheus y visualizarlas en un dashboard de Grafana. No existe infraestructura de observabilidad en el proyecto actual — ni dependencias OTel, ni Prometheus, ni Grafana — por lo que este diseño cubre tanto la instrumentación del código como los servicios nuevos necesarios.
+
+---
+
+### a) Métricas RED a capturar
+
+Se definen 5 métricas: las 3 RED fundamentales más 2 métricas de sistema complementarias.
+
+| Métrica | Tipo OpenTelemetry | Descripción | Labels |
+| --- | --- | --- | --- |
+| `http.requests.total` | Counter | Requests totales por segundo | `method`, `route`, `status` |
+| `http.requests.errors` | Counter | Errores HTTP (4xx/5xx) | `method`, `route`, `status` |
+| `http.request.duration` | Histogram | Latencia de requests en ms | `method`, `route` |
+| `process.memory.usage` | Gauge | Memoria del proceso en bytes | — |
+| `http.requests.active` | Gauge | Requests concurrentes en un momento dado | — |
+
+**Criterio de aceptacion:** las 5 métricas deben aparecer en el endpoint `/metrics` de OpenTelemetry tras generar tráfico contra la API.
+
+---
+
+### b) OpenTelemetry SDK
+
+La inicialización se hará en un archivo separado `packages/api/src/infrastructure/telemetry.ts`, importado antes que cualquier otro módulo en el entrypoint de la API.
+
+#### Configuración del SDK
+
+| Componente | Elección | Justificación |
+| --- | --- | --- |
+| SDK | `NodeSDK` de `@opentelemetry/sdk-node` | SDK oficial para Node.js, maneja ciclo de vida del exportador y las instrumentaciones. |
+| Exportador | `PrometheusExporter` en puerto `9464`, endpoint `/metrics` | Formato nativo de Prometheus; evita tener que levantar un Collector OTel intermedio en esta etapa. |
+| Instrumentaciones | `getNodeAutoInstrumentations` con HTTP y Fastify | Captura automática de duración, método, ruta y status code sin tocar cada handler. |
+| Métricas personalizadas | API de `@opentelemetry/api` (`createCounter`, `createHistogram`, `createObservableGauge`) | Para registrar métricas RED manualmente con labels específicos del dominio. |
+
+#### Orden de inicialización
+
+1. Crear `telemetry.ts` que configura y arranca el `NodeSDK` con `PrometheusExporter` (puerto `9464`, `/metrics`), auto-instrumentaciones HTTP y Fastify, y expone un `Meter` global más una función `createREDMetrics` que crea los counters/histogram manuales.
+2. En `packages/api/src/app.ts`, agregar `import './infrastructure/telemetry.js'` como **primer import** (antes que Fastify o cualquier otro módulo). Esto asegura que las instrumentaciones automáticas capturen desde el inicio.
+3. En cada controller, importar `metrics` desde `@opentelemetry/api` y registrar métricas RED manualmente con labels (`method`, `route`, `status`) en cada handler, midiendo duración con `Date.now()` y usando `try/catch/finally` para asegurar el registro incluso ante errores.
+
+#### Métricas de sistema (Gauges)
+
+`process.memory.usage` y `http.requests.active` se implementan como `ObservableGauge` en `telemetry.ts`. La primera se actualiza vía `process.memoryUsage().rss` en un callback de observación; la segunda expone funciones `incrementActiveRequests` / `decrementActiveRequests` que los controllers llaman al entrar/salir de cada handler.
+
+#### Endpoint expuesto
+
+| Propiedad | Valor |
+| --- | --- |
+| Puerto | `9464` |
+| Ruta | `/metrics` |
+| Formato | Texto plano Prometheus (`application/openmetrics-text`) |
+| Acceso | Solo desde la red interna Docker (`alentapp_prod_net`). No se publica al host. |
+
+#### Dependencias a instalar (Fase 3)
+
+```
+@opentelemetry/sdk-node
+@opentelemetry/sdk-metrics
+@opentelemetry/auto-instrumentations-node
+@opentelemetry/exporter-prometheus
+@opentelemetry/instrumentation-http
+@opentelemetry/instrumentation-fastify
+```
+
+#### Registro de métricas en controllers
+
+Cada controller debe registrar métricas RED manualmente. Por cada handler, el patrón es:
+1. Tomar `Date.now()` al inicio.
+2. Ejecutar el caso de uso en un `try/catch/finally`.
+3. En caso exitoso: `requestCounter.add(1, { method, route, status })`.
+4. En caso de error: `errorCounter.add(1, { method, route, status })`.
+5. En `finally`: `requestDuration.record(Date.now() - start, { method, route })`.
+6. Los handlers de lectura deben además llamar `incrementActiveRequests()` al entrar y `decrementActiveRequests()` al salir.
+
+---
+
+### c) Dashboard RED en Grafana
+
+Se diseñará un dashboard llamado **"RED — AlentApp API"** con 6 paneles que cubren tráfico, errores, latencia, distribución por status, consumo de recursos y detección de cuellos de botella.
+
+#### Estructura del dashboard
+
+| # | Panel | Métrica / PromQL | Tipo | Propósito |
+| --- | --- | --- | --- | --- |
+| 1 | Requests por segundo | `rate(http_server_duration_count[1m])` | Time series | Ver el tráfico actual de la API |
+| 2 | Tasa de error (%) | `sum(rate(http_server_duration_count{status=~"5.."}[1m])) / sum(rate(http_server_duration_count[1m])) * 100` | Time series | Porcentaje de errores 5xx sobre el total |
+| 3 | Latencia p95/p99 | `histogram_quantile(0.95, sum(rate(http_server_duration_bucket[5m])) by (le))` y `histogram_quantile(0.99, ...)` | Time series | Performance percibida por el usuario |
+| 4 | Por status code | `sum by (status) (rate(http_server_duration_count[5m]))` | Stacked area | Distribución de respuestas HTTP |
+| 5 | Memoria del proceso | `process_memory_usage_bytes / 1024 / 1024` | Time series | Consumo de RAM en MB |
+| 6 | Endpoints más lentos | `topk(5, avg by (route) (http_request_duration_ms))` | Bar chart (horizontal) | Identificar cuellos de botella |
+
+#### Layout sugerido
+
+```
+Fila 1: [ Requests/s ]  [ Tasa de error % ]
+Fila 2: [ Latencia p95/p99 ]  [ Por status code ]
+Fila 3: [ Memoria (MB) ]  [ Endpoints más lentos ]
+```
+
+#### Configuración del datasource
+
+| Propiedad | Valor |
+| --- | --- |
+| Nombre | `Prometheus` |
+| Tipo | Prometheus |
+| URL | `http://prometheus:9090` |
+| Acceso | Proxy (desde el contenedor Grafana) |
+
+#### Criterio de aceptacion
+
+- El dashboard tiene exactamente 6 paneles visibles y funcionales.
+- Cada panel muestra datos al generar tráfico contra la API.
+- La tasa de error refleja los 4xx/5xx generados.
+- La latencia varía según el endpoint consultado.
+
+---
+
+### d) Infraestructura de observabilidad (servicios nuevos)
+
+Además de la instrumentación en la API, se deben agregar dos servicios al ecosistema productivo:
+
+| Servicio | Imagen | Función | Puerto |
+| --- | --- | --- | --- |
+| `prometheus` | `prom/prometheus:latest` | Scrapea métricas de la API y las almacena como serie temporal | `9090` (red interna) |
+| `grafana` | `grafana/grafana:latest` | Visualiza métricas con dashboards | `3001` (mapeado al host) |
+
+#### Configuración de Prometheus
+
+Crear `observability/prometheus/prometheus.yml` con dos scrape jobs:
+
+```yaml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'alentapp-api'
+    static_configs:
+      - targets: ['api:3000']
+        labels:
+          app: 'alentapp'
+          service: 'api'
+
+  - job_name: 'opentelemetry'
+    static_configs:
+      - targets: ['api:9464']
+        labels:
+          app: 'alentapp'
+          service: 'api-otel'
+```
+
+El primer job scrapea el endpoint HTTP de la API (para métricas de infraestructura si se exponen), el segundo scrapea el endpoint OTel `/metrics` en puerto `9464` para las métricas RED.
+
+#### Configuración de Grafana
+
+- Datasource Prometheus preconfigurado apuntando a `http://prometheus:9090`.
+- Dashboard "RED — AlentApp API" importado desde JSON o creado manualmente.
+- Credenciales por defecto: `admin / admin`.
+
+#### Conexión con docker-compose
+
+Ambos servicios deben conectarse a la red `alentapp_prod_net` para poder alcanzar a la API. La API **no necesita cambios en su configuración de red** porque ya expone el puerto `9464` dentro del contenedor.
+
+---
+
 ## Criterios de verificacion para la Fase 3
 
 Las migraciones de Prisma se tratan como un paso de release separado, no como responsabilidad permanente del contenedor runtime. Para mantener la imagen `alentapp-api:prod` sin CLI de Prisma ni herramientas de build, se puede etiquetar la etapa `build` y ejecutar migraciones dentro de la red interna:
@@ -444,6 +699,10 @@ docker run --rm --network alentapp_alentapp_prod_net --env-file .env.prod -w /ap
 | API via proxy | `curl http://localhost:8080/api/v1/socios` | Respuesta desde Nginx hacia API. |
 | Filesystem read-only | `docker exec alentapp-api touch /test` | Debe fallar. |
 | DB no publica puerto | `docker compose -f docker-compose.prod.yml ps` | `db` sin mapping `5432:5432`. |
+| OTel exporta métricas | `curl http://localhost:9464/metrics \| head -30` | Muestra métricas `http_requests_total`, `http_request_duration` y `process_memory_usage`. |
+| Prometheus scrapea OTel | `curl http://localhost:9090/api/v1/targets` | `opentelemetry` job con estado `UP`. |
+| Grafana accesible | `curl http://localhost:3001/api/health` | Responde `200 OK`. |
+| Dashboard RED en Grafana | Navegar a `http://localhost:3001/dashboards` | Dashboard "RED — AlentApp API" visible con 6 paneles funcionales. |
 
 ---
 
@@ -455,3 +714,6 @@ docker run --rm --network alentapp_alentapp_prod_net --env-file .env.prod -w /ap
 - Docker Docs. Use Compose in production: https://docs.docker.com/compose/how-tos/production/
 - The Twelve-Factor App: https://12factor.net/
 - NGINX Docs. Reverse Proxy: https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/
+- OpenTelemetry Documentation: https://opentelemetry.io/docs/
+- Prometheus Documentation: https://prometheus.io/docs/
+- Grafana Dashboards: https://grafana.com/docs/grafana/latest/dashboards/
