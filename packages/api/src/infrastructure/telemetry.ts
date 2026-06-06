@@ -2,7 +2,7 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { getNodeAutoInstrumentations } from
 '@opentelemetry/auto-instrumentations-node';
-import { MeterProvider, Meter } from '@opentelemetry/sdk-metrics';
+import type { Meter } from '@opentelemetry/sdk-metrics';
 import { metrics } from '@opentelemetry/api';
 // Configurar Prometheus Exporter
 const prometheusExporter = new PrometheusExporter({
@@ -19,8 +19,9 @@ const sdk = new NodeSDK({
  }),
  ],
 });
-// Iniciar SDK
-sdk.start();
+if (!process.env.VITEST) {
+	sdk.start();
+}
 const meter = metrics.getMeter('alentapp-api');
 export function createREDMetrics(meter: Meter) {
 	const requestCounter = meter.createCounter('http.requests.total', {
