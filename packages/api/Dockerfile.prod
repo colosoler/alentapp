@@ -1,0 +1,69 @@
+FROM node:22-alpine AS deps
+
+WORKDIR /app
+
+COPY package*.json ./
+COPY packages/api/package.json packages/api/
+COPY packages/shared/package.json packages/shared/
+
+RUN npm install --omit=dev --package-lock=false
+
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+COPY packages/api/package.json packages/api/
+COPY packages/shared/package.json packages/shared/
+
+RUN npm install --package-lock=false
+
+COPY packages/api packages/api
+COPY packages/shared packages/shared
+COPY tsconfig.json ./
+
+WORKDIR /app/packages/api
+RUN npx prisma generate --config prisma.config.ts
+
+WORKDIR /app
+RUN find packages/api/src packages/shared -name "*.ts" \
+    ! -name "*.test.ts" \
+    ! -name "*.e2e.test.ts" \
+    ! -name "*.integration.test.ts" \
+    -print \
+    | xargs npx tsc \
+        --ignoreConfig \
+        --noCheck \
+        --target ES2022 \
+        --module NodeNext \
+        --moduleResolution NodeNext \
+        --esModuleInterop \
+        --strict \
+        --skipLibCheck \
+        --rootDir . \
+        --outDir packages/api/dist
+
+FROM node:22-alpine AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+COPY --chown=node:node --from=deps /app/node_modules ./node_modules
+COPY --chown=node:node --from=build /app/packages/api/dist ./packages/api/dist
+COPY --chown=node:node --from=build /app/packages/api/prisma ./packages/api/prisma
+COPY --chown=node:node --from=build /app/packages/api/src/generated ./packages/api/src/generated
+COPY --chown=node:node package*.json ./
+COPY --chown=node:node packages/api/package.json packages/api/
+COPY --chown=node:node packages/shared/package.json packages/shared/
+
+RUN mkdir -p uploads && chown node:node uploads
+
+USER node
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:3000/ || exit 1
+
+CMD ["node", "-e", "import('./packages/api/dist/packages/api/src/app.js').then(async ({ buildApp }) => { const server = buildApp(); const port = Number(process.env.PORT || 3000); await server.listen({ port, host: '0.0.0.0' }); })"]
