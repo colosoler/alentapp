@@ -23,16 +23,20 @@ const sdk = new NodeSDK({
 sdk.start();
 const meter = metrics.getMeter('alentapp-api');
 export function createREDMetrics(meter: Meter) {
- const requestCounter = meter.createCounter('http.requests.total', {
- description: 'Total de requests HTTP',
- });
- const errorCounter = meter.createCounter('http.requests.errors', {
- description: 'Total de errores HTTP',
- });
- const requestDuration = meter.createHistogram('http.request.duration', {
- description: 'Duración de requests',
- unit: 'ms',
- });
- return { requestCounter, errorCounter, requestDuration };
+	const requestCounter = meter.createCounter('http.requests.total', {
+	description: 'Total de requests HTTP',
+	});
+	const errorCounter = meter.createCounter('http.requests.errors', {
+	description: 'Total de errores HTTP',
+	});
+	const requestDuration = meter.createHistogram('http.request.duration', {
+	description: 'Duración de requests',
+	unit: 'ms',
+	});
+	return { requestCounter, errorCounter, requestDuration };
 }
+
+const { requestCounter, errorCounter, requestDuration } = createREDMetrics(meter);
+
+export { requestCounter, errorCounter, requestDuration };
 export { sdk, meter, prometheusExporter };
