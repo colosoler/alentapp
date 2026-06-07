@@ -30,27 +30,7 @@ export class SportController {
             requestCounter.add(1, { method, route, status: 201 });
             return reply.status(201).send({ data: sport });
         } catch (error: any) {
-            if (error.message.includes('Ya existe ese deporte')) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return reply.status(409).send({ error: error.message });
-            }
-
-            if (
-                error.message.includes('Faltan campos requeridos') ||
-                error.message.includes('El nombre del deporte es obligatorio') ||
-                error.message.includes('La descripcion del deporte es obligatoria') ||
-                error.message.includes('La capacidad maxima debe ser mayor a cero') ||
-                error.message.includes('El precio adicional es obligatorio') ||
-                error.message.includes('El precio adicional no puede ser negativo')
-            ) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -69,10 +49,7 @@ export class SportController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: sports });
         } catch (error: any) {
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
             decrementActiveRequests();
@@ -92,20 +69,7 @@ export class SportController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: sport });
         } catch (error: any) {
-            if (error.message.includes('El id informado no es valido')) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-
-            if (error.message.includes('El deporte no existe')) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return reply.status(404).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
             decrementActiveRequests();
@@ -127,28 +91,7 @@ export class SportController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: sport });
         } catch (error: any) {
-            if (error.message.includes('El deporte no existe')) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return reply.status(404).send({ error: error.message });
-            }
-
-            if (
-                error.message.includes('La descripcion del deporte es obligatoria') ||
-                error.message.includes('La capacidad maxima debe ser mayor a cero')
-            ) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-
-            if (error.message.includes('No hay cupo disponible')) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return reply.status(409).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -172,28 +115,7 @@ export class SportController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: sport });
         } catch (error: any) {
-            if (error.message.includes('El deporte no existe')) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return reply.status(404).send({ error: error.message });
-            }
-
-            if (
-                error.message.includes('Accion de cupo invalida') ||
-                error.message.includes('No se puede decrementar el cupo por debajo de cero')
-            ) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-
-            if (error.message.includes('No hay cupo disponible')) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return reply.status(409).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -211,27 +133,36 @@ export class SportController {
             requestCounter.add(1, { method, route, status: 204 });
             return reply.status(204).send();
         } catch (error: any) {
-            if (error.message.includes('El id informado no es valido')) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-
-            if (error.message.includes('El deporte no existe')) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return reply.status(404).send({ error: error.message });
-            }
-
-            if (error.message.includes('No se puede eliminar un deporte con inscriptos')) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return reply.status(409).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
+    }
+
+    private handleError(error: Error, reply: FastifyReply, method: string, route: string) {
+        let status = 500;
+        if (error.message.includes('El deporte no existe')) {
+            status = 404;
+        } else if (
+            error.message.includes('Ya existe ese deporte') ||
+            error.message.includes('No hay cupo disponible') ||
+            error.message.includes('No se puede eliminar un deporte con inscriptos')
+        ) {
+            status = 409;
+        } else if (
+            error.message.includes('Faltan campos requeridos') ||
+            error.message.includes('El nombre del deporte es obligatorio') ||
+            error.message.includes('La descripcion del deporte es obligatoria') ||
+            error.message.includes('La capacidad maxima debe ser mayor a cero') ||
+            error.message.includes('El precio adicional es obligatorio') ||
+            error.message.includes('El precio adicional no puede ser negativo') ||
+            error.message.includes('El id informado no es valido') ||
+            error.message.includes('Accion de cupo invalida') ||
+            error.message.includes('No se puede decrementar el cupo por debajo de cero')
+        ) {
+            status = 400;
+        }
+        errorCounter.add(1, { method, route, status });
+        return reply.status(status).send({ error: status === 500 ? 'Error interno, reintente más tarde' : error.message });
     }
 }
