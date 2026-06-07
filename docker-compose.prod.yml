@@ -150,6 +150,10 @@ services:
       - prometheus_data:/prometheus
     networks:
       - alentapp_prod_net
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     logging:
       driver: json-file
@@ -180,6 +184,10 @@ services:
       - alentapp_prod_net
     depends_on:
       - prometheus
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     logging:
       driver: json-file
