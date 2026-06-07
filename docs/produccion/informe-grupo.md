@@ -103,6 +103,7 @@ Acceso a Grafana: `http://localhost:3001` (admin / admin).
 2. **Errores de tipo en `telemetry.ts`** que solo aparecían en el build de producción (`tsc`), no en desarrollo (`tsx` no hace type-check estricto). **Solución:** corregir imports y configuración de instrumentaciones.
 3. **`read_only` rompía el arranque de la API** (`fs.mkdirSync('uploads')`). **Solución:** montar el volumen `uploads_prod`.
 4. **Build del frontend fallaba** por variables TS sin usar (afloran solo con `tsc -b` en prod). **Solución:** limpieza del código por el equipo de frontend.
+5. **Conflictos de red por URLs absolutas en el frontend** (`host not found in upstream "api"`), debido a que la API estaba *hardcodeada* y no resolvía correctamente en la red de Docker. **Solución:** Implementar lógica dinámica para `API_URL` usando `import.meta.env` en `api/src/config.ts` e importandolo en `/services`. En desarrollo exige un archivo `.env`, y en producción hace *fallback* a un *string* vacío para utilizar el *reverse proxy* de Nginx `localhost:8080/api/v1/...`
 
 ### Migraciones (procedimiento de release)
 
