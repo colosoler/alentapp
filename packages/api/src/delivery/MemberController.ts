@@ -24,8 +24,7 @@ export class MemberController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: socios });
         } catch (error: any) {
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({ error: error.message });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
             decrementActiveRequests();
@@ -45,16 +44,7 @@ export class MemberController {
             requestCounter.add(1, { method, route, status: 201 });
             return reply.status(201).send({ data: socio });
         } catch (error: any) {
-            if (error.message.includes('Ya existe un miembro con ese DNI')) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return reply.status(409).send({ error: error.message });
-            }
-            if (error.message.includes('inválido')) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({ error: "Error interno, reintente más tarde" });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -73,16 +63,7 @@ export class MemberController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: socio });
         } catch (error: any) {
-            if (error.message.includes('Ya existe un miembro con ese DNI')) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return reply.status(409).send({ error: error.message });
-            }
-            if (error.message.includes('inválido') || error.message.includes('no existe')) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({ error: "Error interno, reintente más tarde" });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -101,10 +82,20 @@ export class MemberController {
             requestCounter.add(1, { method, route, status: 204 });
             return reply.status(204).send();
         } catch (error: any) {
-            errorCounter.add(1, { method, route, status: 400 });
-            return reply.status(400).send({ error: error.message });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
+    }
+
+    private handleError(error: Error, reply: FastifyReply, method: string, route: string) {
+        let status = 500;
+        if (error.message.includes('Ya existe un miembro con ese DNI')) {
+            status = 409;
+        } else if (error.message.includes('inválido') || error.message.includes('no existe')) {
+            status = 400;
+        }
+        errorCounter.add(1, { method, route, status });
+        return reply.status(status).send({ error: status === 500 ? "Error interno, reintente más tarde" : error.message });
     }
 }
