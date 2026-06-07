@@ -476,7 +476,7 @@
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "sum(v8js_memory_heap_used) / 1024 / 1024",
+          "expr": "process_memory_usage / 1024 / 1024",
           "legendFormat": "Memory (MB)",
           "refId": "A"
         }
