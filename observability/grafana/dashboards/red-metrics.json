@@ -476,7 +476,7 @@
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "process_memory_usage / 1024 / 1024",
+          "expr": "sum(v8js_memory_heap_used) / 1024 / 1024",
           "legendFormat": "Memory (MB)",
           "refId": "A"
         }
@@ -543,8 +543,8 @@
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "topk(5, avg by (route) (rate(http_request_duration_sum[5m]) / rate(http_request_duration_count[5m])))",
-          "legendFormat": "{{route}}",
+          "expr": "topk(5, avg by (net_host_name, http_method, http_status_code) (rate(http_server_duration_sum[5m]) / rate(http_server_duration_count[5m])))",
+          "legendFormat": "{{http_method}} {{net_host_name}} {{http_status_code}}",
           "refId": "A"
         }
       ],
