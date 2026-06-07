@@ -36,10 +36,7 @@ export class PaymentController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: payments });
         } catch (error: any) {
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
             decrementActiveRequests();
@@ -59,15 +56,7 @@ export class PaymentController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: payment });
         } catch (error: any) {
-            if (error.message === 'El pago especificado no existe') {
-                errorCounter.add(1, { method, route, status: 404 });
-                return reply.status(404).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
             decrementActiveRequests();
@@ -86,25 +75,7 @@ export class PaymentController {
             requestCounter.add(1, { method, route, status: 201 });
             return reply.status(201).send({ data: payment });
         } catch (error: any) {
-            if (error.message.includes('El socio especificado no existe')) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return reply.status(404).send({ error: error.message });
-            }
-
-            if (
-                error.message.includes('Faltan campos requeridos') ||
-                error.message.includes('El monto debe ser mayor a cero') ||
-                error.message.includes('El mes debe estar entre 1 y 12') ||
-                error.message.includes('El año ingresado no es válido')
-            ) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -122,27 +93,7 @@ export class PaymentController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: payment });
         } catch (error: any) {
-            if (error.message === 'El pago especificado no existe') {
-                errorCounter.add(1, { method, route, status: 404 });
-                return reply.status(404).send({ error: error.message });
-            }
-
-            if (
-                error.message.includes('El monto debe ser mayor a cero') ||
-                error.message.includes('El mes debe estar entre 1 y 12') ||
-                error.message.includes('El año ingresado no es válido') ||
-                error.message.includes('Use el endpoint de cancelación') ||
-                error.message.includes('No se puede pagar un pago cancelado') ||
-                error.message.includes('Solo se pueden marcar como pagados')
-            ) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return reply.status(400).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -160,22 +111,33 @@ export class PaymentController {
             requestCounter.add(1, { method, route, status: 200 });
             return reply.status(200).send({ data: payment });
         } catch (error: any) {
-            if (error.message === 'El pago especificado no existe') {
-                errorCounter.add(1, { method, route, status: 404 });
-                return reply.status(404).send({ error: error.message });
-            }
-
-            if (error.message === 'El pago ya se encuentra cancelado') {
-                errorCounter.add(1, { method, route, status: 409 });
-                return reply.status(409).send({ error: error.message });
-            }
-
-            errorCounter.add(1, { method, route, status: 500 });
-            return reply.status(500).send({
-                error: 'Error interno, reintente más tarde',
-            });
+            return this.handleError(error, reply, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
+    }
+
+    private handleError(error: Error, reply: FastifyReply, method: string, route: string) {
+        let status = 500;
+        if (
+            error.message === 'El pago especificado no existe' ||
+            error.message.includes('El socio especificado no existe')
+        ) {
+            status = 404;
+        } else if (error.message === 'El pago ya se encuentra cancelado') {
+            status = 409;
+        } else if (
+            error.message.includes('Faltan campos requeridos') ||
+            error.message.includes('El monto debe ser mayor a cero') ||
+            error.message.includes('El mes debe estar entre 1 y 12') ||
+            error.message.includes('El año ingresado no es válido') ||
+            error.message.includes('Use el endpoint de cancelación') ||
+            error.message.includes('No se puede pagar un pago cancelado') ||
+            error.message.includes('Solo se pueden marcar como pagados')
+        ) {
+            status = 400;
+        }
+        errorCounter.add(1, { method, route, status });
+        return reply.status(status).send({ error: status === 500 ? 'Error interno, reintente más tarde' : error.message });
     }
 }

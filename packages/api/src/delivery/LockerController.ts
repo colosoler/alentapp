@@ -32,16 +32,7 @@ export class LockerController {
             requestCounter.add(1, { method, route, status: 201 });
             return response.status(201).send(locker);
         } catch (error: any) {
-            if (error instanceof ConflictError) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return response.status(409).send({ error: error.message });
-            }
-            if (error instanceof BadRequestError) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return response.status(400).send({ error: error.message});
-            }
-            errorCounter.add(1, { method, route, status: 500 });
-            return response.status(500).send({ error: 'Internal Server Error'});
+            return this.handleError(error, response, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -57,12 +48,7 @@ export class LockerController {
             requestCounter.add(1, { method, route, status: 200 });
             return response.status(200).send(lockers);
         } catch (error: any) {
-            if (error instanceof BadRequestError) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return response.status(400).send({ error: error.message });
-            }
-            errorCounter.add(1, { method, route, status: 500 });
-            return response.status(500).send({ error: 'Internal Server Error'});
+            return this.handleError(error, response, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
             decrementActiveRequests();
@@ -78,22 +64,7 @@ export class LockerController {
             requestCounter.add(1, { method, route, status: 200 });
             return response.status(200).send(locker);
         } catch (error: any) {
-            if (error instanceof NotFoundError) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return response.status(404).send({ error: error.message });
-            }
-            if (error instanceof BadRequestError) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return response.status(400).send({ error: error.message });
-            }
-            if (error instanceof ConflictError) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return response.status(409).send({ error: error.message });
-            }
-
-            console.error(error);
-            errorCounter.add(1, { method, route, status: 500 });
-            return response.status(500).send({ error: 'Error interno del servidor' });
+            return this.handleError(error, response, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -108,22 +79,7 @@ export class LockerController {
             requestCounter.add(1, { method, route, status: 200 });
             return response.status(200).send(locker);
         } catch (error: any) {
-            if (error instanceof NotFoundError) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return response.status(404).send({ error: error.message });
-            }
-            if (error instanceof ConflictError) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return response.status(409).send({ error: error.message });
-            }
-            if (error instanceof BadRequestError) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return response.status(400).send({ error: error.message });
-            }
-
-            console.error(error);
-            errorCounter.add(1, { method, route, status: 500 });
-            return response.status(500).send({ error: 'Error interno del servidor' });
+            return this.handleError(error, response, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -138,20 +94,7 @@ export class LockerController {
             requestCounter.add(1, { method, route, status: 200 });
             return response.status(200).send(locker);
         } catch (error: any) {
-            if (error instanceof NotFoundError) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return response.status(404).send({ error: error.message });
-            }
-            if (error instanceof ConflictError) {
-                errorCounter.add(1, { method, route, status: 409 });
-                return response.status(409).send({ error: error.message });
-            }
-            if (error instanceof BadRequestError) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return response.status(400).send({ error: error.message });
-            }
-            errorCounter.add(1, { method, route, status: 500 });
-            return response.status(500).send({ error: 'Internal Server Error' });
+            return this.handleError(error, response, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -166,16 +109,7 @@ export class LockerController {
             requestCounter.add(1, { method, route, status: 204 });
             return response.status(204).send();
         } catch (error: any) {
-            if (error instanceof NotFoundError) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return response.status(404).send({ error: error.message });
-            }
-            if (error instanceof BadRequestError) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return response.status(400).send({ error: error.message });
-            }
-            errorCounter.add(1, { method, route, status: 500 });
-            return response.status(500).send({ error: 'Internal Server Error' });
+            return this.handleError(error, response, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -190,18 +124,7 @@ export class LockerController {
             requestCounter.add(1, { method, route, status: 200 });
             return response.status(200).send(locker);
         } catch (error: any) {
-            if (error instanceof NotFoundError) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return response.status(404).send({ error: error.message });
-            }
-            if (error instanceof BadRequestError) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return response.status(400).send({ error: error.message });
-            }
-
-            console.error(error);
-            errorCounter.add(1, { method, route, status: 500 });
-            return response.status(500).send({ error: 'Error interno del servidor' });
+            return this.handleError(error, response, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
@@ -216,20 +139,23 @@ export class LockerController {
             requestCounter.add(1, { method, route, status: 200 });
             return response.status(200).send(locker);
         } catch (error: any) {
-            if (error instanceof NotFoundError) {
-                errorCounter.add(1, { method, route, status: 404 });
-                return response.status(404).send({ error: error.message });
-            }
-            if (error instanceof BadRequestError) {
-                errorCounter.add(1, { method, route, status: 400 });
-                return response.status(400).send({ error: error.message });
-            }
-
-            console.error(error);
-            errorCounter.add(1, { method, route, status: 500 });
-            return response.status(500).send({ error: 'Error interno del servidor' });
+            return this.handleError(error, response, method, route);
         } finally {
             requestDuration.record(Date.now() - start, { method, route });
         }
+    }
+
+    private handleError(error: Error, response: FastifyReply, method: string, route: string) {
+        let status = 500;
+        if (error instanceof NotFoundError) {
+            status = 404;
+        } else if (error instanceof ConflictError) {
+            status = 409;
+        } else if (error instanceof BadRequestError) {
+            status = 400;
+        }
+        errorCounter.add(1, { method, route, status });
+        console.error(error);
+        return response.status(status).send({ error: status === 500 ? 'Error interno del servidor' : error.message });
     }
 }
